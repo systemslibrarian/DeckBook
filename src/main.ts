@@ -1169,7 +1169,6 @@ function bindEvents(): void {
   const encryptInput = document.querySelector<HTMLTextAreaElement>("#encrypt-input");
   encryptInput?.addEventListener("input", (event) => {
     state.encryptInput = (event.currentTarget as HTMLTextAreaElement).value;
-    render();
   });
 
   const advancedToggle = document.querySelector<HTMLInputElement>("#advanced-mode-toggle");
