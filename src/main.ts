@@ -32,6 +32,8 @@ type WalkthroughStep = {
   targetId: string;
 };
 
+type SetupViewMode = "visual" | "checklist";
+
 type AppState = {
   mode: DeckMode;
   deckBook: DeckBookEntry[];
@@ -53,6 +55,7 @@ type AppState = {
   checklist: Record<string, boolean[]>;
   keyListPage: number;
   keyListPageSize: number;
+  setupViewMode: SetupViewMode;
   walkthroughStep: number;
   walkthroughActive: boolean;
   walkthroughDismissed: boolean;
@@ -68,6 +71,7 @@ const appRoot: HTMLDivElement = app;
 
 const STORAGE_KEY = "deckbook.v1";
 const GUIDE_KEY = "deckbook.guide.dismissed.v1";
+const SETUP_VIEW_KEY = "deckbook.setup.view.v1";
 
 const INDEX_WORDS = [
   "RIVER",
@@ -165,6 +169,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
 ];
 
 const initialGuideDismissed = loadGuideDismissed();
+const initialSetupViewMode = loadSetupViewMode();
 
 const state: AppState = {
   mode: "10",
@@ -184,6 +189,7 @@ const state: AppState = {
   checklist: {},
   keyListPage: 1,
   keyListPageSize: 24,
+  setupViewMode: initialSetupViewMode,
   walkthroughStep: 0,
   walkthroughActive: !initialGuideDismissed,
   walkthroughDismissed: initialGuideDismissed
@@ -418,6 +424,15 @@ function loadGuideDismissed(): boolean {
 
 function saveGuideDismissed(value: boolean): void {
   localStorage.setItem(GUIDE_KEY, value ? "1" : "0");
+}
+
+function loadSetupViewMode(): SetupViewMode {
+  const stored = localStorage.getItem(SETUP_VIEW_KEY);
+  return stored === "checklist" ? "checklist" : "visual";
+}
+
+function saveSetupViewMode(mode: SetupViewMode): void {
+  localStorage.setItem(SETUP_VIEW_KEY, mode);
 }
 
 function isDeckBookEntryLike(value: unknown): value is DeckBookEntry {
@@ -655,6 +670,16 @@ function render(): void {
           : ""
       }
 
+      <section class="panel quick-start" id="quick-start">
+        <h2>Quick Start: Encrypt in 3 Steps</h2>
+        <ol>
+          <li>Generate DeckBook keys, then pick an UNUSED key in Deck Key List.</li>
+          <li>Open Receiver Setup View and arrange cards exactly in the shown top-to-bottom order.</li>
+          <li>Enter plaintext in Encrypt, select the same key, and send: index code + ciphertext.</li>
+        </ol>
+        <p class="mini-warning">If your message is longer than 26 letters, enable Advanced multi-deck mode and use fresh keys in sequence.</p>
+      </section>
+
       <section class="panel warning-panel">
         <h2>Security Model and Warning</h2>
         <p><strong>DeckBook is an educational physical-key model, not production cryptography.</strong> Its security comes from pre-shared secret deck orders, one-time use, and disciplined key handling.</p>
@@ -726,8 +751,36 @@ function render(): void {
         }
         <p>The receiver must have the same DeckBook or the same physical deck order before decryption is possible.</p>
         <p class="mini-warning">Do not transmit deck order publicly. Share only the index code and ciphertext.</p>
+        <div class="control-row setup-mode">
+          <label for="setup-view-mode">Receiver setup display</label>
+          <select id="setup-view-mode" aria-label="Receiver setup display mode">
+            <option value="visual" ${state.setupViewMode === "visual" ? "selected" : ""}>Compact visual card order</option>
+            <option value="checklist" ${state.setupViewMode === "checklist" ? "selected" : ""}>Checklist-only (full line list)</option>
+          </select>
+        </div>
         <div class="setup-labels"><span>TOP OF DECK</span><span>BOTTOM OF DECK</span></div>
-        <div class="setup-list" role="list">${setupChecklist}</div>
+        ${
+          state.setupViewMode === "visual"
+            ? `<div class="deck-visual" role="list" aria-label="Visual deck order from top to bottom">
+                ${
+                  activeEntry
+                    ? activeEntry.deckOrder
+                        .map(
+                          (card, index) =>
+                            `<div class="deck-card ${
+                              card.suit === "HEARTS" || card.suit === "DIAMONDS" ? "red" : "black"
+                            }" role="listitem" aria-label="Position ${index + 1}: ${escapeHtml(cardAccessibleLabel(card))}">
+                              <span class="deck-pos">${index + 1}</span>
+                              <span class="deck-face">${escapeHtml(card.label)}</span>
+                            </div>`
+                        )
+                        .join("")
+                    : '<p class="empty">Select a deck key and view it to see card order.</p>'
+                }
+              </div>`
+            : ""
+        }
+        <div class="setup-list ${state.setupViewMode === "checklist" ? "checklist-only" : ""}" role="list">${setupChecklist}</div>
         <div class="button-row">
           <button type="button" id="copy-setup" ${activeEntry ? "" : "disabled"}>Copy setup instructions</button>
         </div>
@@ -845,6 +898,8 @@ function render(): void {
         <p>The clue, or index code, identifies which deck key to use. It does not generate the key, protect the key, or replace the key.</p>
         <h3>What breaks it?</h3>
         <p>The system breaks if the deck order is exposed, reused, generated poorly, arranged incorrectly, or shared over an insecure channel.</p>
+        <h3>Inspiration</h3>
+        <p>This educational app is inspired by manual Solitaire-style encryption teaching material and adapts those ideas into a modern browser classroom demo.</p>
       </section>
 
       <section class="panel framing">
@@ -1101,6 +1156,13 @@ function bindEvents(): void {
     }
     await navigator.clipboard.writeText(getSetupText(active));
     flash("Setup instructions copied.");
+    render();
+  });
+
+  const setupViewMode = document.querySelector<HTMLSelectElement>("#setup-view-mode");
+  setupViewMode?.addEventListener("change", (event) => {
+    state.setupViewMode = (event.currentTarget as HTMLSelectElement).value as SetupViewMode;
+    saveSetupViewMode(state.setupViewMode);
     render();
   });
 

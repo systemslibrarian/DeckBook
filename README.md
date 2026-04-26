@@ -6,6 +6,12 @@ DeckBook is an educational exhibit-style web app (Cipher Museum theme) that mode
 
 **The deck order is the key. The clue only tells you which key to use.**
 
+## Inspiration
+
+This project is inspired by Solitaire-style manual encryption teaching material, including:
+
+- https://steemit.com/steemiteducation/@shai-hulud/solitaire-encryption-low-tech-high-security-a-how-to
+
 ## Disclaimer
 
 DeckBook is an educational demonstration, not production cryptography.
