@@ -222,6 +222,19 @@ button:disabled {
     var(--panel);
 }
 
+.guide-reopen {
+  padding: 0.7rem 1rem;
+}
+
+.guide-reopen p {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  color: var(--muted);
+}
+
 .quick-start {
   border-color: #aa7d28;
   background:
@@ -236,6 +249,140 @@ button:disabled {
 
 .quick-start li {
   margin-bottom: 0.3rem;
+}
+
+.how-it-works {
+  border-color: #9e7929;
+}
+
+.how-it-works h3 {
+  margin: 0.9rem 0 0.25rem;
+  color: #f3d58e;
+}
+
+.how-it-works p,
+.how-it-works ul {
+  margin: 0.25rem 0;
+}
+
+.example-list {
+  padding-left: 1.2rem;
+}
+
+.steps-container {
+  margin-top: 0.7rem;
+  border: 1px dashed #6a5630;
+  border-radius: 10px;
+  background: #15120e;
+  padding: 0.5rem;
+}
+
+.steps-hint {
+  margin: 0.2rem 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.steps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.steps-table th,
+.steps-table td {
+  text-align: left;
+  padding: 0.32rem 0.5rem;
+  border-bottom: 1px solid rgb(245 224 173 / 8%);
+}
+
+.steps-table th {
+  color: #f3d58e;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  background: #15120e;
+}
+
+.steps-table .step-pos {
+  color: var(--muted);
+  width: 2.2rem;
+}
+
+.steps-table .step-out .mono {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.steps-table .step-deck {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 860px) {
+  .steps-table {
+    font-size: 0.84rem;
+  }
+
+  .steps-table th,
+  .steps-table td {
+    padding: 0.26rem 0.35rem;
+  }
+}
+
+.simulator-panel {
+  border-color: #9e7929;
+}
+
+.simulator-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  margin: 0.6rem 0;
+}
+
+.simulator-grid .party,
+.simulator-grid .channel {
+  border: 1px solid #5b4c2f;
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: #17130f;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.simulator-grid .channel {
+  border-style: dashed;
+  border-color: #b58a3d;
+  background: #1a160f;
+  min-width: 220px;
+}
+
+.simulator-grid h3 {
+  margin: 0;
+  color: #f3d58e;
+}
+
+.party-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 860px) {
+  .simulator-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.attack-lab {
+  border-color: #b66b6b;
+}
+
+.attack-lab h2 {
+  color: #ffb6b6;
 }
 
 .storage-note,

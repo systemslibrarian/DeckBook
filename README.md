@@ -27,6 +27,40 @@ DeckBook is an educational demonstration, not production cryptography.
 - Manual/physical keybook operational risks
 - Why modern key exchange exists (including post-quantum KEM context)
 
+## How the Cipher Works
+
+The cipher is a Vigenere-style add/subtract over the 26 letters A–Z. The
+twist is that the keystream comes from a shuffled deck of cards.
+
+1. **Letters become numbers.** `A = 0, B = 1, …, Z = 25`. Spaces, digits,
+   and punctuation are stripped before encryption.
+2. **Cards become a keystream.** Each card has a stable value `0..51`
+   (Ace of Spades = 0, King of Clubs = 51). Each card contributes one
+   keystream letter:
+
+   ```
+   keystream[i] = deck[i].value mod 26
+   ```
+
+   One card per letter, so a full deck produces 52 keystream letters and
+   a single deck key can encrypt at most 52 letters. Each of the 26
+   alphabet letters is hit by exactly two card values, so the keystream
+   is uniformly distributed.
+3. **Encrypt by adding mod 26, decrypt by subtracting.**
+
+   ```
+   cipher[i] = ( plain[i]  + keystream[i] ) mod 26
+   plain[i]  = ( cipher[i] - keystream[i] + 26 ) mod 26
+   ```
+
+For messages longer than 52 letters, Advanced multi-deck mode consumes
+additional fresh decks in sequence (letters 0–51 use the first deck,
+52–103 the second, and so on). Each deck is used exactly once.
+
+Both sides must already hold the same private DeckBook. Only the index
+code (a public label like `LANTERN-42`) and the ciphertext travel over
+the public channel. The deck order itself is the secret.
+
 ## Feature Highlights
 
 - Secure deck generation using `crypto.getRandomValues()` (no `Math.random()`)
