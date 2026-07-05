@@ -6,6 +6,24 @@ DeckBook is an educational exhibit-style web app (Cipher Museum theme) that mode
 
 **The deck order is the key. The clue only tells you which key to use.**
 
+**[▶ Try the live exhibit](https://systemslibrarian.github.io/DeckBook/)**
+
+| Watch the cipher run | Crack a reused key | Play the intercept challenge |
+| --- | --- | --- |
+| ![Watch It Work: a card flips off the deck and shifts one letter](docs/screenshots/visualizer.png) | ![Key Reuse Attack Lab: crib dragging recovers the plaintext](docs/screenshots/attack-lab.png) | ![Challenge mode: recover two messages from ciphertext](docs/screenshots/challenge.png) |
+
+## Quality
+
+- **Accessibility:** 0 axe-core violations across WCAG 2.1 A/AA, enforced in CI
+  on the initial page, all reference panels expanded, and Challenge mode
+  ([e2e/a11y.spec.ts](e2e/a11y.spec.ts)). Full keyboard operation,
+  screen-reader labelling, and `prefers-reduced-motion` support throughout.
+- **Tested:** 54 unit tests (Vitest) for all pure logic, plus 8 Playwright
+  end-to-end tests (full encrypt→share→decrypt round-trip, challenge solve,
+  and the accessibility audits). Both suites run on every push via CI.
+- **Lean & offline:** fully client-side, no backend. The production bundle is
+  ~34 KB JS + ~6 KB CSS gzipped, and installs as an offline-capable PWA.
+
 ## Inspiration
 
 This project is inspired by Solitaire-style manual encryption teaching material, including:

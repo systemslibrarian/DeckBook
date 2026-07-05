@@ -1410,7 +1410,7 @@ function render(): void {
         <div class="setup-labels"><span>TOP OF DECK</span><span>BOTTOM OF DECK</span></div>
         ${
           state.setupViewMode === "visual"
-            ? `<div class="deck-visual" role="list" aria-label="Visual deck order from top to bottom">
+            ? `<div class="deck-visual" ${activeEntry ? 'role="list"' : ""} aria-label="Visual deck order from top to bottom">
                 ${
                   activeEntry
                     ? activeEntry.deckOrder
@@ -1429,7 +1429,7 @@ function render(): void {
               </div>`
             : ""
         }
-        <div class="setup-list ${state.setupViewMode === "checklist" ? "checklist-only" : ""}" role="list">${setupChecklist}</div>
+        <div class="setup-list ${state.setupViewMode === "checklist" ? "checklist-only" : ""}" role="group" aria-label="Deck arrangement checklist">${setupChecklist}</div>
         <div class="button-row">
           <button type="button" id="copy-setup" ${activeEntry ? "" : "disabled"}>Copy setup instructions</button>
           <button type="button" id="print-setup" ${activeEntry ? "" : "disabled"}>Print physical deck sheet</button>
