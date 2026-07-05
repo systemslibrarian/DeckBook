@@ -25,6 +25,7 @@ import {
   letterFrequencies,
   rankCribOffsets
 } from "./analysis";
+import { renderCardFaceSvg } from "./cardface";
 import { buildShareUrl, parseShareFragment } from "./share";
 import { hydrateQrImages } from "./qr";
 import { bindVisualizerEvents, renderVisualizerPanel } from "./visualizer";
@@ -86,7 +87,7 @@ type WalkthroughStep = {
   targetId: string;
 };
 
-type SetupViewMode = "visual" | "checklist";
+type SetupViewMode = "visual" | "realistic" | "checklist";
 
 // State for the Two-Party Simulator panel. Kept separate from the main
 // encrypt/decrypt panels so the simulator can be played with freely
@@ -608,7 +609,7 @@ function saveGuideDismissed(value: boolean): void {
 
 function loadSetupViewMode(): SetupViewMode {
   const stored = localStorage.getItem(SETUP_VIEW_KEY);
-  return stored === "checklist" ? "checklist" : "visual";
+  return stored === "checklist" || stored === "realistic" ? stored : "visual";
 }
 
 function saveSetupViewMode(mode: SetupViewMode): void {
@@ -1404,6 +1405,7 @@ function render(): void {
           <label for="setup-view-mode">Receiver setup display</label>
           <select id="setup-view-mode" aria-label="Receiver setup display mode">
             <option value="visual" ${state.setupViewMode === "visual" ? "selected" : ""}>Compact visual card order</option>
+            <option value="realistic" ${state.setupViewMode === "realistic" ? "selected" : ""}>Realistic card images</option>
             <option value="checklist" ${state.setupViewMode === "checklist" ? "selected" : ""}>Checklist-only (full line list)</option>
           </select>
         </div>
@@ -1421,6 +1423,25 @@ function render(): void {
                             }" role="listitem" aria-label="Position ${index + 1}: ${escapeHtml(cardAccessibleLabel(card))}">
                               <span class="deck-pos">${index + 1}</span>
                               <span class="deck-face">${escapeHtml(card.label)}</span>
+                            </div>`
+                        )
+                        .join("")
+                    : '<p class="empty">Select a deck key and view it to see card order.</p>'
+                }
+              </div>`
+            : ""
+        }
+        ${
+          state.setupViewMode === "realistic"
+            ? `<div class="deck-visual realistic" ${activeEntry ? 'role="list"' : ""} aria-label="Visual deck order from top to bottom">
+                ${
+                  activeEntry
+                    ? activeEntry.deckOrder
+                        .map(
+                          (card, index) =>
+                            `<div class="deck-card-real" role="listitem" aria-label="Position ${index + 1}: ${escapeHtml(cardAccessibleLabel(card))}">
+                              <span class="deck-pos">${index + 1}</span>
+                              ${renderCardFaceSvg(card, "realistic", 72, 100)}
                             </div>`
                         )
                         .join("")
