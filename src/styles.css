@@ -671,6 +671,21 @@ button:disabled {
   button:focus-visible {
     transform: none;
   }
+
+  /* Freeze the visualizer flip, pop, riffle and bar transitions. Cards still
+   * switch faces instantly; only the motion is removed. */
+  .viz-card-inner,
+  .freq-bar {
+    transition: none;
+  }
+
+  .viz-tile,
+  .viz-cell.pop,
+  .shuffle-card,
+  .shuffle-overlay,
+  .presenter-bar {
+    animation: none;
+  }
 }
 
 @keyframes fadeUp {
@@ -681,5 +696,717 @@ button:disabled {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+ * Watch It Work — animated visualizer
+ * ======================================================================== */
+
+.visualizer-panel {
+  border-color: #c79a3e;
+}
+
+.visualizer-panel h2 {
+  color: #ffdf9c;
+}
+
+.viz-controls {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 1fr;
+  gap: 0.6rem;
+  margin: 0.7rem 0;
+}
+
+.viz-control label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.viz-stage {
+  margin-top: 0.6rem;
+  border: 1px solid #6f5528;
+  border-radius: 12px;
+  background: radial-gradient(900px 300px at 50% -30%, rgb(228 186 88 / 12%), transparent 60%), #12100c;
+  padding: 1rem;
+  min-height: 260px;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.viz-card-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.viz-deck-count {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Playing card with a 3D flip. */
+.viz-card {
+  width: 96px;
+  height: 132px;
+  perspective: 700px;
+}
+
+.viz-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 500ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.viz-card.flipped .viz-card-inner {
+  transform: rotateY(180deg);
+}
+
+.viz-card-back,
+.viz-card-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  backface-visibility: hidden;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 45%);
+}
+
+.viz-card-back {
+  background:
+    repeating-linear-gradient(45deg, #7a3b3b 0 6px, #5e2c2c 6px 12px);
+  border: 3px solid #f3d58e;
+}
+
+.viz-card-front {
+  transform: rotateY(180deg);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.viz-card-front .card-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.viz-deck-stack .viz-card {
+  animation: none;
+}
+
+.viz-equation-area {
+  min-height: 132px;
+  display: flex;
+  align-items: center;
+}
+
+.viz-waiting {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.viz-equation {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.viz-tile {
+  border-radius: 10px;
+  border: 1px solid #6a5630;
+  background: #17130f;
+  padding: 0.5rem 0.6rem;
+  min-width: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  animation: vizPop 380ms ease both;
+}
+
+.viz-tile.plain {
+  border-color: #6f8fb0;
+}
+
+.viz-tile.key {
+  border-color: #c79a3e;
+}
+
+.viz-tile.cipher {
+  border-color: #7ecf92;
+}
+
+.viz-tile-letter {
+  font-size: 1.7rem;
+  font-weight: 800;
+  font-family: "Courier New", monospace;
+}
+
+.viz-tile.plain .viz-tile-letter {
+  color: #a9ccee;
+}
+
+.viz-tile.key .viz-tile-letter {
+  color: var(--accent);
+}
+
+.viz-tile.cipher .viz-tile-letter {
+  color: var(--ok);
+}
+
+.viz-tile-num {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.viz-tile-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.viz-op {
+  align-self: center;
+  font-size: 1.4rem;
+  color: #f3d58e;
+}
+
+.viz-tapes {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.viz-tape-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.viz-tape-label {
+  width: 88px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.viz-tape {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.viz-cell {
+  width: 1.5rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  background: #17130f;
+  border: 1px solid #3a301d;
+  color: var(--muted);
+}
+
+.viz-cell.done {
+  color: #a9ccee;
+  border-color: #4d6a8a;
+}
+
+.viz-cell.next {
+  border-color: var(--accent);
+  color: #f3d58e;
+  box-shadow: 0 0 0 2px rgb(228 186 88 / 30%);
+}
+
+.viz-cell.out {
+  color: var(--ok);
+  border-color: #3f6f4c;
+}
+
+.viz-cell.pending {
+  color: #4a3f28;
+}
+
+.viz-cell.pop {
+  animation: vizPop 380ms ease both;
+}
+
+.viz-done {
+  margin-top: 0.9rem;
+  border-top: 1px solid #5f4d2a;
+  padding-top: 0.6rem;
+}
+
+.viz-done-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@keyframes vizPop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==========================================================================
+ * Live frequency histograms (Encrypt panel)
+ * ======================================================================== */
+
+.freq-wrap {
+  margin-top: 0.9rem;
+  border-top: 1px dashed #6a5630;
+  padding-top: 0.7rem;
+}
+
+.freq-title {
+  margin: 0 0 0.2rem;
+  color: #f3d58e;
+}
+
+.freq-intro,
+.freq-note {
+  margin: 0.2rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.freq-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.freq-chart {
+  margin: 0;
+}
+
+.freq-chart figcaption {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.freq-cols {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 96px;
+  border-bottom: 1px solid #5f4d2a;
+  padding-bottom: 2px;
+}
+
+.freq-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.freq-bar {
+  width: 70%;
+  background: linear-gradient(180deg, #e4ba58, #8a6f2c);
+  border-radius: 2px 2px 0 0;
+  min-height: 1px;
+  transition: height 180ms ease;
+}
+
+.freq-ghost {
+  position: absolute;
+  bottom: 0;
+  width: 90%;
+  background: rgb(169 204 238 / 22%);
+  border-radius: 2px 2px 0 0;
+}
+
+.freq-letter {
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+/* ==========================================================================
+ * Crib dragging (Attack Lab)
+ * ======================================================================== */
+
+.crib-lab {
+  margin-top: 0.9rem;
+  border: 1px solid #b66b6b;
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #1a1310;
+}
+
+.crib-lab h3 {
+  margin: 0 0 0.3rem;
+  color: #ffb6b6;
+}
+
+.crib-controls {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 2fr;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+  align-items: end;
+}
+
+.crib-field label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.crib-strip-wrap {
+  overflow-x: auto;
+  padding-bottom: 0.3rem;
+}
+
+.crib-legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.crib-strip {
+  display: flex;
+  gap: 2px;
+  min-width: min-content;
+}
+
+.crib-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border-radius: 4px;
+  padding: 2px 1px;
+  min-width: 1.5rem;
+}
+
+.crib-col.active {
+  background: rgb(228 186 88 / 14%);
+  box-shadow: inset 0 0 0 1px rgb(228 186 88 / 40%);
+}
+
+.crib-diff,
+.crib-guess,
+.crib-reveal {
+  font-family: "Courier New", monospace;
+  font-size: 0.8rem;
+  width: 1.3rem;
+  text-align: center;
+}
+
+.crib-diff {
+  color: #6f6552;
+}
+
+.crib-guess {
+  color: #f3d58e;
+  font-weight: 700;
+}
+
+.crib-reveal {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.crib-readout {
+  margin: 0.4rem 0;
+  font-size: 1.05rem;
+}
+
+.crib-hints-label {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.crib-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.crib-hint {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+}
+
+/* ==========================================================================
+ * Share block (QR handoff) + incoming banner
+ * ======================================================================== */
+
+.share-block {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  margin: 0.7rem 0;
+  flex-wrap: wrap;
+}
+
+.share-qr img {
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  background: #f7f0dd;
+  display: block;
+}
+
+.share-copy {
+  flex: 1;
+  min-width: 220px;
+}
+
+.panel.incoming {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 1px rgb(126 207 146 / 30%), var(--shadow);
+}
+
+.incoming-banner {
+  background: rgb(126 207 146 / 12%);
+  border-left: 4px solid var(--ok);
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  color: #cdeccf;
+}
+
+@media (max-width: 860px) {
+  .viz-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .viz-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .freq-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .crib-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+ * Shuffle animation (shown while generating a DeckBook)
+ * ======================================================================== */
+
+.shuffle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-content: center;
+  gap: 1.4rem;
+  background: rgb(10 9 6 / 86%);
+  animation: fadeIn 200ms ease both;
+}
+
+.shuffle-stage {
+  position: relative;
+  width: 180px;
+  height: 150px;
+  margin: 0 auto;
+}
+
+.shuffle-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 62px;
+  height: 88px;
+  margin: -44px 0 0 -31px;
+  border-radius: 8px;
+  border: 2px solid #f3d58e;
+  background: repeating-linear-gradient(45deg, #7a3b3b 0 6px, #5e2c2c 6px 12px);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 45%);
+  animation: riffle 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 42ms);
+}
+
+.shuffle-caption {
+  margin: 0;
+  text-align: center;
+  color: #f3d58e;
+  font-size: 0.95rem;
+}
+
+@keyframes riffle {
+  0% {
+    transform: translate(calc((var(--i) - 8) * 2px), -130px) rotate(-22deg);
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc((var(--i) - 8) * 9px), 0) rotate(calc((var(--i) - 8) * 3deg));
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+ * Presenter / kiosk mode
+ * ======================================================================== */
+
+.presenter-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  background: #241c12;
+  border: 1px solid #d2a74c;
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  box-shadow: var(--shadow);
+  max-width: 94vw;
+}
+
+.presenter-pos {
+  color: #ffe8ab;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.presenter {
+  overflow-x: hidden;
+}
+
+body.presenter main.museum-shell {
+  width: min(1000px, 94vw);
+  min-height: 100vh;
+  align-content: center;
+  padding-bottom: 5rem;
+}
+
+body.presenter .panel {
+  font-size: 1.12rem;
+}
+
+body.presenter .panel h2 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+}
+
+body.presenter .toast {
+  bottom: 5rem;
+}
+
+@media (max-width: 860px) {
+  .presenter-bar {
+    width: 94vw;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .presenter-pos {
+    order: -1;
+    flex-basis: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+
+  body.presenter .panel {
+    font-size: 1rem;
+  }
+}
+
+/* ==========================================================================
+ * Print: physical deck setup sheet
+ * ======================================================================== */
+
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  body.print-setup main.museum-shell > .panel {
+    display: none;
+  }
+
+  body.print-setup #receiver-setup {
+    display: block;
+    border: none;
+    box-shadow: none;
+  }
+
+  body.print-setup #receiver-setup > *:not(.print-sheet) {
+    display: none;
+  }
+
+  .print-sheet {
+    display: block;
+    color: #000;
+  }
+
+  .print-sheet h2 {
+    margin: 0 0 0.4rem;
+  }
+
+  .print-cards {
+    column-count: 4;
+    column-gap: 1.5rem;
+    font-family: "Courier New", monospace;
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+
+  .print-cards li.red {
+    color: #b00000;
+  }
+
+  .print-warn {
+    margin-top: 1rem;
+    font-weight: 700;
+    border: 2px solid #000;
+    padding: 0.5rem;
   }
 }

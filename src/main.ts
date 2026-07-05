@@ -18,6 +18,16 @@ import {
   secureRandomInt,
   secureShuffle
 } from "./cipher";
+import {
+  ENGLISH_FREQUENCY_PERCENT,
+  differenceMod26,
+  dragCrib,
+  letterFrequencies,
+  rankCribOffsets
+} from "./analysis";
+import { buildShareUrl, parseShareFragment } from "./share";
+import { hydrateQrImages } from "./qr";
+import { bindVisualizerEvents, renderVisualizerPanel } from "./visualizer";
 
 /* ============================================================================
  * DeckBook — educational cipher demo
@@ -82,14 +92,21 @@ type SimulatorState = {
   decrypted: string | null;
 };
 
-// State for the Key Reuse Attack Lab.
+// State for the Key Reuse Attack Lab. `crib*` drives the interactive
+// crib-dragging explorer: the user guesses a word in one message and slides
+// it along the ciphertext difference to leak the other message.
 type AttackLabState = {
   plaintextA: string;
   plaintextB: string;
   reusedKey: string;
+  crib: string;
+  cribSide: "A" | "B";
+  cribOffset: number;
   result: {
     cipherA: string;
     cipherB: string;
+    cipherARaw: string;
+    cipherBRaw: string;
     cipherDiff: string;
     plainDiff: string;
   } | null;
@@ -122,7 +139,26 @@ type AppState = {
   walkthroughDismissed: boolean;
   simulator: SimulatorState;
   attackLab: AttackLabState;
+  // True when index code + ciphertext arrived via a share link / QR scan.
+  incomingShare: boolean;
+  // Full-screen, one-panel-at-a-time presentation mode (projector / kiosk).
+  presenterMode: boolean;
+  presenterIndex: number;
 };
+
+// Curated panel sequence for presenter mode — a guided arc from "what is
+// this" through a live encrypt/decrypt to the modern-crypto payoff. Each id
+// must match a section id rendered in the main template.
+const PRESENTER_PANELS: { id: string; title: string }[] = [
+  { id: "how-it-works", title: "How the Cipher Works" },
+  { id: "visualizer", title: "Watch It Work" },
+  { id: "generate", title: "Generate a DeckBook" },
+  { id: "encrypt-panel", title: "Encrypt a Message" },
+  { id: "decrypt-panel", title: "Decrypt a Message" },
+  { id: "simulator", title: "Two-Party Simulator" },
+  { id: "attack-lab", title: "Key Reuse Attack Lab" },
+  { id: "modern-crypto", title: "Why Modern Key Exchange Exists" }
+];
 
 // ---------------------------------------------------------------------------
 // 2. App state and bootstrap
@@ -197,6 +233,11 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetId: "how-it-works"
   },
   {
+    title: "Watch It Work",
+    body: "Press Play in Watch It Work to see the cipher run one card at a time: card flips off the deck, becomes a keystream number, shifts one letter.",
+    targetId: "visualizer"
+  },
+  {
     title: "Generate Key Material",
     body: "Generate your private DeckBook. Both sender and receiver must have the same secret deck orders before communication.",
     targetId: "generate"
@@ -220,6 +261,11 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     title: "Decrypt Using the Index Code",
     body: "The receiver enters index code(s) and ciphertext to regenerate the same keystream and recover plaintext.",
     targetId: "decrypt-panel"
+  },
+  {
+    title: "Break Key Reuse Yourself",
+    body: "In the Attack Lab, encrypt two messages with the same key, then drag a crib along the ciphertext difference and watch the other message leak out. This is why 'one-time' means one time.",
+    targetId: "attack-lab"
   },
   {
     title: "Learn Failure Modes",
@@ -268,8 +314,14 @@ const state: AppState = {
     plaintextA: "",
     plaintextB: "",
     reusedKey: "",
+    crib: "",
+    cribSide: "A",
+    cribOffset: 0,
     result: null
-  }
+  },
+  incomingShare: false,
+  presenterMode: false,
+  presenterIndex: 0
 };
 
 if (state.deckBook.length > 0) {
@@ -278,7 +330,51 @@ if (state.deckBook.length > 0) {
   state.activeViewCode = state.deckBook[0].indexCode;
 }
 
+// If the page was opened from a share link / QR scan, the fragment carries
+// the PUBLIC half of a transmission: index code(s) + ciphertext. Prefill
+// the Decrypt panel with it. Whether decryption works depends entirely on
+// whether this device already holds the right DeckBook — that's the lesson.
+const incomingShare = parseShareFragment(window.location.hash);
+if (incomingShare) {
+  state.decryptIndexCode = incomingShare.codes.join(", ");
+  state.decryptCiphertext = incomingShare.ct;
+  state.incomingShare = true;
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+}
+
 render();
+
+if (incomingShare) {
+  document.querySelector("#decrypt-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  flash("Encrypted message received over the public channel. Decrypt it — if you hold the right DeckBook.");
+  render();
+}
+
+// The printable receiver sheet is toggled with a body class; clean it up
+// once the print dialog closes.
+window.addEventListener("afterprint", () => {
+  document.body.classList.remove("print-setup");
+});
+
+// Global keyboard navigation for presenter mode. Bound once (not in the
+// per-render bindEvents) so listeners never stack. Ignores key presses while
+// typing in a field so arrow keys still move the text cursor.
+window.addEventListener("keydown", (event) => {
+  if (!state.presenterMode) {
+    return;
+  }
+  const target = event.target as HTMLElement | null;
+  const typing = target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
+  if (event.key === "Escape") {
+    exitPresenter();
+  } else if (!typing && (event.key === "ArrowRight" || event.key === "PageDown")) {
+    event.preventDefault();
+    presenterGo(1);
+  } else if (!typing && (event.key === "ArrowLeft" || event.key === "PageUp")) {
+    event.preventDefault();
+    presenterGo(-1);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // 3. Identifiers (index codes + fingerprint)
@@ -364,6 +460,33 @@ function parseIndexCodes(text: string): string[] {
     .split(",")
     .map((part) => part.trim().toUpperCase())
     .filter((part) => part.length > 0);
+}
+
+// A brief card-riffle animation shown while a DeckBook is generated. Purely
+// atmospheric — it dramatizes "the order is the key". Skipped entirely under
+// prefers-reduced-motion. Resolves when the animation has played out.
+function playShuffleAnimation(): Promise<void> {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return Promise.resolve();
+  }
+  const overlay = document.createElement("div");
+  overlay.className = "shuffle-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+  const cards = Array.from({ length: 16 }, (_, i) => `<span class="shuffle-card" style="--i:${i}"></span>`).join("");
+  overlay.innerHTML = `<div class="shuffle-stage">${cards}</div><p class="shuffle-caption">Shuffling with crypto.getRandomValues()…</p>`;
+  document.body.appendChild(overlay);
+  return new Promise((resolve) => {
+    window.setTimeout(() => {
+      overlay.remove();
+      resolve();
+    }, 1250);
+  });
+}
+
+// Base URL for share links: strip any existing hash/query so we don't stack
+// fragments. In dev and on GitHub Pages this is the page's own address.
+function shareBaseUrl(): string {
+  return window.location.origin + window.location.pathname;
 }
 
 function escapeHtml(value: string): string {
@@ -604,6 +727,85 @@ function renderEncryptStepsHtml(): string {
     ${overflowMsg}`;
 }
 
+// Compute the live plaintext/ciphertext pair for the current Encrypt draft,
+// capped to the capacity of the selected keys. Powers the frequency charts.
+function computeLiveCipher(): { plain: string; cipher: string } {
+  const normalized = normalizeAZ(state.encryptInput);
+  const decks = activeEncryptDecks();
+  if (normalized.length === 0 || decks.length === 0) {
+    return { plain: "", cipher: "" };
+  }
+  const shown = Math.min(normalized.length, decks.length * LETTERS_PER_DECK);
+  const streams = decks.map((entry) => keystreamFromDeck(entry.deckOrder));
+  let cipher = "";
+  for (let i = 0; i < shown; i += 1) {
+    const keyNum = streams[Math.floor(i / LETTERS_PER_DECK)][i % LETTERS_PER_DECK];
+    cipher += String.fromCharCode((normalized.charCodeAt(i) - 65 + keyNum) % 26 + 65);
+  }
+  return { plain: normalized.slice(0, shown), cipher };
+}
+
+// One 26-column bar chart. Bars are scaled to the tallest count in this
+// chart; the optional ghost series (typical English) is scaled to its own
+// max so only the SHAPE is compared, not absolute counts.
+function renderFrequencyChart(title: string, counts: number[], ghostPercent?: number[]): string {
+  const max = Math.max(...counts, 1);
+  const ghostMax = ghostPercent ? Math.max(...ghostPercent) : 1;
+  const cols = counts
+    .map((count, i) => {
+      const letter = String.fromCharCode(65 + i);
+      const barHeight = Math.round((count / max) * 100);
+      const ghost = ghostPercent
+        ? `<span class="freq-ghost" style="height:${Math.round((ghostPercent[i] / ghostMax) * 100)}%"></span>`
+        : "";
+      return `<div class="freq-col" title="${letter}: ${count}">${ghost}<span class="freq-bar" style="height:${barHeight}%"></span><span class="freq-letter">${letter}</span></div>`;
+    })
+    .join("");
+  return `
+    <figure class="freq-chart">
+      <figcaption>${title}</figcaption>
+      <div class="freq-cols" role="img" aria-label="${title}">${cols}</div>
+    </figure>`;
+}
+
+// The "English is spiky, ciphertext is flat" lesson, live as you type.
+function renderFrequencyHtml(): string {
+  const { plain, cipher } = computeLiveCipher();
+  if (cipher.length === 0) {
+    return "";
+  }
+  const note =
+    plain.length < 20
+      ? `<p class="freq-note">Short samples are noisy — type a longer message (20+ letters) to see the shapes clearly.</p>`
+      : "";
+  return `
+    <div class="freq-wrap">
+      <h3 class="freq-title">Letter fingerprints</h3>
+      <p class="freq-intro">English has a spiky letter pattern (ghost bars = typical English). A good keystream flattens it: the ciphertext should show no favorite letters — nothing for a codebreaker to grab.</p>
+      <div class="freq-charts">
+        ${renderFrequencyChart("Your plaintext", letterFrequencies(plain), ENGLISH_FREQUENCY_PERCENT)}
+        ${renderFrequencyChart("Your ciphertext", letterFrequencies(cipher))}
+      </div>
+      ${note}
+    </div>`;
+}
+
+// Everything inside the live #encrypt-steps container: per-letter math plus
+// the frequency charts. Re-rendered on every keystroke without touching the
+// textarea (see the encrypt-input listener).
+function renderEncryptLiveHtml(): string {
+  return renderEncryptStepsHtml() + renderFrequencyHtml();
+}
+
+// Repaint only the live encrypt preview in place, leaving the textarea and
+// key selects untouched (no caret jump, no lost selection).
+function repaintEncryptSteps(): void {
+  const steps = document.querySelector<HTMLDivElement>("#encrypt-steps");
+  if (steps) {
+    steps.innerHTML = renderEncryptLiveHtml();
+  }
+}
+
 // Render the Two-Party Simulator panel. It splits the screen into Sender,
 // Public Channel, and Receiver columns so the data flow is visible at a
 // glance: the DeckBook is shared off-channel beforehand, then only the
@@ -690,14 +892,15 @@ function renderAttackLabPanel(): string {
         <p><strong>Ciphertext B:</strong> <span class="mono">${escapeHtml(lab.result.cipherB)}</span></p>
         <p><strong>(Cipher A &minus; Cipher B) mod 26:</strong> <span class="mono">${escapeHtml(lab.result.cipherDiff)}</span></p>
         <p><strong>(Plain A &minus; Plain B) mod 26:</strong> <span class="mono">${escapeHtml(lab.result.plainDiff)}</span></p>
-        <p class="mini-warning">Those last two lines are identical. The shared key cancelled out — an attacker who saw both ciphertexts learned the difference of the plaintexts without touching the key. If they can guess any letter of either message, they can fill in the other.</p>
-       </div>`
+        <p class="mini-warning">Those last two lines are identical. The shared key cancelled out — an attacker who saw both ciphertexts learned the difference of the plaintexts without touching the key. Now try to pull the actual messages out below.</p>
+       </div>
+       ${renderCribDragger(lab)}`
     : `<p class="empty">Encrypt two messages with the same key to see the attack.</p>`;
 
   return `
     <section class="panel attack-lab" id="attack-lab">
       <h2>Key Reuse Attack Lab</h2>
-      <p>One-time keys must be used <strong>once</strong>. To see why, encrypt two different messages with the <em>same</em> key and look at what an eavesdropper can compute.</p>
+      <p>One-time keys must be used <strong>once</strong>. To see why, encrypt two different messages with the <em>same</em> key, then crack them by hand — no key required.</p>
       <div class="control-row">
         <label for="lab-key">Reused key</label>
         <select id="lab-key" ${state.deckBook.length === 0 ? "disabled" : ""}>
@@ -706,9 +909,9 @@ function renderAttackLabPanel(): string {
         </select>
       </div>
       <label for="lab-a">Plaintext A</label>
-      <textarea id="lab-a" rows="2" placeholder="ATTACK AT DAWN">${escapeHtml(lab.plaintextA)}</textarea>
+      <textarea id="lab-a" rows="2" placeholder="ATTACKATDAWNBRINGSHOVELS">${escapeHtml(lab.plaintextA)}</textarea>
       <label for="lab-b">Plaintext B</label>
-      <textarea id="lab-b" rows="2" placeholder="MEET ME AT NOON">${escapeHtml(lab.plaintextB)}</textarea>
+      <textarea id="lab-b" rows="2" placeholder="DEFENDTHEEASTGATETONIGHT">${escapeHtml(lab.plaintextB)}</textarea>
       <div class="button-row">
         <button type="button" id="lab-run" ${state.deckBook.length === 0 ? "disabled" : ""}>Run the attack</button>
         <button type="button" id="lab-reset">Reset</button>
@@ -716,6 +919,144 @@ function renderAttackLabPanel(): string {
       ${resultBlock}
       <p>The math: for any position <span class="mono">i</span>, <span class="mono">cipher<sub>A</sub>[i] - cipher<sub>B</sub>[i] = (plain<sub>A</sub>[i] + k[i]) - (plain<sub>B</sub>[i] + k[i]) = plain<sub>A</sub>[i] - plain<sub>B</sub>[i]</span> (all mod 26). The keystream <span class="mono">k</span> vanishes.</p>
     </section>`;
+}
+
+// The interactive crib-dragging explorer. The user types a word they suspect
+// appears in one message and slides it along the ciphertext difference. At
+// each offset the tool reveals what the OTHER message would say there — the
+// classic two-time-pad break, done by hand. Wrong guesses read as gibberish;
+// the right word and position spell out readable English.
+// The persistent controls (text input + side select + slider) live OUTSIDE
+// the #crib-live subtree so that dragging the slider or editing the crib does
+// not recreate those elements — the interaction stays smooth. Only #crib-live
+// (the alignment strip, readout and hints) is regenerated on each change, via
+// updateCribLive().
+function renderCribDragger(lab: AttackLabState): string {
+  if (!lab.result) {
+    return "";
+  }
+  const diff = differenceMod26(lab.result.cipherARaw, lab.result.cipherBRaw);
+  const crib = normalizeAZ(lab.crib);
+
+  return `
+    <div class="crib-lab">
+      <h3>Crack it: crib dragging</h3>
+      <p>Guess a word that might appear in one message — a "crib" like <span class="mono">THE</span>, <span class="mono">ATTACK</span>, or <span class="mono">GATE</span>. Slide it along the difference and watch the other message appear where you guess right.</p>
+      ${cribControls(lab, crib, diff.length)}
+      <div id="crib-live">${renderCribLive(lab, diff, crib)}</div>
+    </div>`;
+}
+
+// The live-updating body of the crib dragger. Pure function of state + diff.
+function renderCribLive(lab: AttackLabState, diff: number[], crib: string): string {
+  const otherSide = lab.cribSide === "A" ? "B" : "A";
+  if (crib.length === 0) {
+    return `<p class="empty">Type a crib above to begin dragging.</p>`;
+  }
+
+  const maxOffset = Math.max(0, diff.length - crib.length);
+  const offset = Math.min(lab.cribOffset, maxOffset);
+  const revealed = dragCrib(diff, crib, offset, lab.cribSide);
+
+  // Alignment strip: show the crib sitting under the difference at `offset`.
+  const cells = Array.from({ length: diff.length }, (_, i) => {
+    const within = i >= offset && i < offset + crib.length;
+    const revealChar = within ? revealed[i - offset] : "";
+    const cribChar = within ? crib[i - offset] : "";
+    return `<div class="crib-col ${within ? "active" : ""}">
+        <span class="crib-diff">${String.fromCharCode(65 + diff[i])}</span>
+        <span class="crib-guess">${cribChar || "&middot;"}</span>
+        <span class="crib-reveal">${revealChar || "&middot;"}</span>
+      </div>`;
+  }).join("");
+
+  const ranked = rankCribOffsets(diff, crib, lab.cribSide)
+    .slice(0, 3)
+    .map(
+      (hit) =>
+        `<button type="button" class="crib-hint" data-crib-offset="${hit.offset}">pos ${hit.offset + 1}: <span class="mono">${escapeHtml(
+          hit.revealed
+        )}</span></button>`
+    )
+    .join("");
+
+  return `
+    <p>Your crib <span class="mono">${escapeHtml(crib)}</span> is guessed to be in <strong>message ${lab.cribSide}</strong> at position ${offset + 1}. Where it lands, the tool subtracts it from the difference to reveal <strong>message ${otherSide}</strong>:</p>
+    <div class="crib-strip-wrap">
+      <div class="crib-legend"><span>diff</span><span>crib (msg ${lab.cribSide})</span><span>reveal (msg ${otherSide})</span></div>
+      <div class="crib-strip">${cells}</div>
+    </div>
+    <p class="crib-readout">Revealed in message ${otherSide}: <span class="mono">${escapeHtml(revealed)}</span></p>
+    ${ranked ? `<p class="crib-hints-label">Most English-looking positions (click to jump):</p><div class="crib-hints">${ranked}</div>` : ""}
+    <p class="mini-warning">Only ciphertext went into this. No key, no deck order — reuse alone leaked the plaintext.</p>`;
+}
+
+function cribControls(lab: AttackLabState, crib: string, diffLength: number): string {
+  const maxOffset = Math.max(0, diffLength - Math.max(crib.length, 1));
+  const offset = Math.min(lab.cribOffset, maxOffset);
+  return `
+    <div class="crib-controls">
+      <div class="crib-field">
+        <label for="crib-word">Crib (your guessed word)</label>
+        <input id="crib-word" value="${escapeHtml(lab.crib)}" placeholder="THE" autocomplete="off" />
+      </div>
+      <div class="crib-field">
+        <label for="crib-side">Guess it is in message</label>
+        <select id="crib-side">
+          <option value="A" ${lab.cribSide === "A" ? "selected" : ""}>Message A</option>
+          <option value="B" ${lab.cribSide === "B" ? "selected" : ""}>Message B</option>
+        </select>
+      </div>
+      <div class="crib-field crib-slide">
+        <label for="crib-offset" id="crib-offset-label">Position: ${offset + 1}</label>
+        <input id="crib-offset" type="range" min="0" max="${maxOffset}" value="${offset}" ${crib.length === 0 ? "disabled" : ""} />
+      </div>
+    </div>
+    <div class="button-row">
+      <button type="button" id="crib-autosolve">▶ Auto-solve (watch it break)</button>
+    </div>`;
+}
+
+// Refresh only the crib dragger's live subtree and sync the slider bounds,
+// without recreating the text input or slider elements. This keeps slider
+// dragging and crib typing smooth (no full re-render, no caret jump).
+function updateCribLive(): void {
+  const lab = state.attackLab;
+  if (!lab.result) {
+    return;
+  }
+  const diff = differenceMod26(lab.result.cipherARaw, lab.result.cipherBRaw);
+  const crib = normalizeAZ(lab.crib);
+  const maxOffset = Math.max(0, diff.length - Math.max(crib.length, 1));
+  const offset = Math.min(lab.cribOffset, maxOffset);
+
+  const live = document.querySelector<HTMLDivElement>("#crib-live");
+  if (live) {
+    live.innerHTML = renderCribLive(lab, diff, crib);
+  }
+  const label = document.querySelector<HTMLLabelElement>("#crib-offset-label");
+  if (label) {
+    label.textContent = `Position: ${offset + 1}`;
+  }
+  const slider = document.querySelector<HTMLInputElement>("#crib-offset");
+  if (slider) {
+    slider.max = String(maxOffset);
+    slider.value = String(offset);
+    slider.disabled = crib.length === 0;
+  }
+  bindCribHints();
+}
+
+// (Re)bind the "most English-looking positions" jump buttons. Called after
+// each #crib-live refresh because innerHTML replacement discards the old
+// buttons and their listeners.
+function bindCribHints(): void {
+  document.querySelectorAll<HTMLButtonElement>("button[data-crib-offset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.attackLab.cribOffset = Number(button.dataset.cribOffset);
+      updateCribLive();
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -835,6 +1176,9 @@ function render(): void {
         <p class="subtitle">A card-based one-time keybook for teaching key distribution, one-time pads, stream ciphers, and the danger of key reuse.</p>
         <p class="prominent">The deck order is the key. The clue only tells you which key to use.</p>
         <p class="secondary">The index code can be public. The deck order cannot.</p>
+        <div class="button-row">
+          <button type="button" id="presenter-start" aria-label="Enter full-screen presenter mode">▶ Presenter mode</button>
+        </div>
         <div class="badge-grid" role="list" aria-label="Reality labels">
           <span role="listitem">Historical inspiration: Solitaire / manual ciphers</span>
           <span role="listitem">Educational value: High</span>
@@ -906,6 +1250,8 @@ function render(): void {
 
         <p class="mini-warning">The whole system rests on one thing: sender and receiver must already share the same private deck order. If they do not, no amount of math helps.</p>
       </section>
+
+      ${renderVisualizerPanel(state.deckBook)}
 
       <section class="panel warning-panel">
         <h2>Security Model and Warning</h2>
@@ -1010,7 +1356,24 @@ function render(): void {
         <div class="setup-list ${state.setupViewMode === "checklist" ? "checklist-only" : ""}" role="list">${setupChecklist}</div>
         <div class="button-row">
           <button type="button" id="copy-setup" ${activeEntry ? "" : "disabled"}>Copy setup instructions</button>
+          <button type="button" id="print-setup" ${activeEntry ? "" : "disabled"}>Print physical deck sheet</button>
         </div>
+        ${
+          activeEntry
+            ? `<div class="print-sheet" aria-hidden="true">
+                <h2>DeckBook — Physical Setup Sheet</h2>
+                <p><strong>Deck Key:</strong> ${escapeHtml(activeEntry.indexCode)}</p>
+                <p><strong>Fingerprint:</strong> ${escapeHtml(activeEntry.fingerprint)}</p>
+                <p>Arrange a real deck of cards in this exact order, from the top of the deck down. Verify every card. One card out of place breaks decryption.</p>
+                <ol class="print-cards">
+                  ${activeEntry.deckOrder
+                    .map((card) => `<li class="${card.suit === "HEARTS" || card.suit === "DIAMONDS" ? "red" : "black"}">${escapeHtml(card.label)}</li>`)
+                    .join("")}
+                </ol>
+                <p class="print-warn">Keep this sheet secret. Anyone who photographs it holds the key. Destroy it after setup.</p>
+              </div>`
+            : ""
+        }
       </section>
 
       <section class="panel" id="encrypt-panel">
@@ -1045,7 +1408,7 @@ function render(): void {
               <p>Plaintext length: ${normalizedEncrypt.length} letters | Available keystream: ${LETTERS_PER_DECK} letters</p>`
         }
 
-        <div id="encrypt-steps" class="steps-container" aria-live="polite">${renderEncryptStepsHtml()}</div>
+        <div id="encrypt-steps" class="steps-container" aria-live="polite">${renderEncryptLiveHtml()}</div>
 
         <div class="button-row">
           <button type="button" id="encrypt-button" ${unusedEntries.length > 0 ? "" : "disabled"}>Encrypt</button>
@@ -1059,14 +1422,32 @@ function render(): void {
                 )}</p>
                 <p><strong>Normalized Plaintext:</strong> ${escapeHtml(state.encryptOutput.normalizedPlaintext)}</p>
                 <p><strong>Ciphertext:</strong> ${escapeHtml(state.encryptOutput.ciphertext)}</p>
+                <div class="share-block">
+                  <div class="share-qr">
+                    <img data-qr="${escapeHtml(
+                      buildShareUrl(shareBaseUrl(), state.encryptOutput.indexCodes, state.encryptOutput.ciphertext)
+                    )}" alt="QR code linking to this encrypted message" width="150" height="150" />
+                  </div>
+                  <div class="share-copy">
+                    <p><strong>Send it over the public channel.</strong> Scan this QR on another device — or copy the link. It carries only the index code and ciphertext. The receiving device decrypts it <em>only</em> if it already holds this DeckBook.</p>
+                    <div class="button-row">
+                      <button type="button" id="copy-share-link">Copy share link</button>
+                    </div>
+                  </div>
+                </div>
                 <p class="mini-warning">Mark used now: ${escapeHtml(state.encryptOutput.indexCodes.join(", "))}</p>
               </div>`
             : ""
         }
       </section>
 
-      <section class="panel" id="decrypt-panel">
+      <section class="panel ${state.incomingShare ? "incoming" : ""}" id="decrypt-panel">
         <h2>Decrypt</h2>
+        ${
+          state.incomingShare
+            ? `<p class="incoming-banner">An encrypted message arrived via share link. The index code and ciphertext below came off the public channel — the deck order did not. Press Decrypt: it works only if this device already holds the matching DeckBook.</p>`
+            : ""
+        }
         <label for="decrypt-index">Index code (or comma-separated codes for multi-deck)</label>
         <input id="decrypt-index" value="${escapeHtml(
           state.decryptIndexCode
@@ -1148,6 +1529,63 @@ function render(): void {
   `;
 
   bindEvents();
+  applyPresenterMode();
+}
+
+// Presenter mode post-processing. render() rebuilds the panels fresh each
+// time (no leftover inline styles), so here we simply hide every top-level
+// child except the current curated panel and mount a fixed control bar.
+// The bar lives on <body>, outside appRoot, and is rebuilt every render.
+function applyPresenterMode(): void {
+  document.querySelector(".presenter-bar")?.remove();
+  const main = document.querySelector<HTMLElement>("#main-content");
+
+  if (!state.presenterMode || !main) {
+    document.body.classList.remove("presenter");
+    return;
+  }
+
+  document.body.classList.add("presenter");
+  const panels = PRESENTER_PANELS;
+  const idx = Math.min(Math.max(0, state.presenterIndex), panels.length - 1);
+
+  const currentId = panels[idx].id;
+  main.querySelectorAll<HTMLElement>(":scope > *").forEach((el) => {
+    // Keep the toast and the screen-reader live region visible so status
+    // announcements still reach users while presenting.
+    if (el.id === currentId || el.classList.contains("toast") || el.classList.contains("sr-only")) {
+      el.style.display = "";
+      return;
+    }
+    el.style.display = "none";
+  });
+
+  const bar = document.createElement("div");
+  bar.className = "presenter-bar";
+  bar.innerHTML = `
+    <button type="button" id="presenter-prev" ${idx === 0 ? "disabled" : ""} aria-label="Previous slide">◀ Prev</button>
+    <span class="presenter-pos" role="status" aria-live="polite">${idx + 1} / ${panels.length} — ${escapeHtml(
+      panels[idx].title
+    )}</span>
+    <button type="button" id="presenter-next" ${idx === panels.length - 1 ? "disabled" : ""} aria-label="Next slide">Next ▶</button>
+    <button type="button" id="presenter-exit" aria-label="Exit presenter mode">Exit</button>`;
+  document.body.appendChild(bar);
+
+  document.querySelector<HTMLButtonElement>("#presenter-prev")?.addEventListener("click", () => presenterGo(-1));
+  document.querySelector<HTMLButtonElement>("#presenter-next")?.addEventListener("click", () => presenterGo(1));
+  document.querySelector<HTMLButtonElement>("#presenter-exit")?.addEventListener("click", exitPresenter);
+
+  main.querySelector<HTMLElement>(`#${currentId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function presenterGo(delta: number): void {
+  state.presenterIndex = Math.min(Math.max(0, state.presenterIndex + delta), PRESENTER_PANELS.length - 1);
+  render();
+}
+
+function exitPresenter(): void {
+  state.presenterMode = false;
+  render();
 }
 
 function bindEvents(): void {
@@ -1155,6 +1593,13 @@ function bindEvents(): void {
   modeSelect?.addEventListener("change", (event) => {
     const next = (event.currentTarget as HTMLSelectElement).value as DeckMode;
     state.mode = next;
+  });
+
+  const presenterStart = document.querySelector<HTMLButtonElement>("#presenter-start");
+  presenterStart?.addEventListener("click", () => {
+    state.presenterMode = true;
+    state.presenterIndex = 0;
+    render();
   });
 
   const guideStart = document.querySelector<HTMLButtonElement>("#guide-start");
@@ -1198,7 +1643,9 @@ function bindEvents(): void {
     render();
 
     const count = Number(state.mode);
-    const deckBook = await generateDeckBook(count);
+    // Overlap the riffle animation with the actual key generation so the
+    // total wait is the longer of the two, not their sum.
+    const [deckBook] = await Promise.all([generateDeckBook(count), playShuffleAnimation()]);
     state.deckBook = deckBook;
     state.isGenerating = false;
     state.activeViewCode = deckBook[0]?.indexCode ?? null;
@@ -1399,6 +1846,28 @@ function bindEvents(): void {
     render();
   });
 
+  const printSetup = document.querySelector<HTMLButtonElement>("#print-setup");
+  printSetup?.addEventListener("click", () => {
+    if (!getActiveEntry()) {
+      return;
+    }
+    // Reveal the print-only sheet, then invoke the browser print dialog. The
+    // afterprint listener (set at bootstrap) removes the class again.
+    document.body.classList.add("print-setup");
+    window.print();
+  });
+
+  const copyShareLink = document.querySelector<HTMLButtonElement>("#copy-share-link");
+  copyShareLink?.addEventListener("click", async () => {
+    if (!state.encryptOutput) {
+      return;
+    }
+    const url = buildShareUrl(shareBaseUrl(), state.encryptOutput.indexCodes, state.encryptOutput.ciphertext);
+    await navigator.clipboard.writeText(url);
+    flash("Share link copied. It carries only the index code + ciphertext.");
+    render();
+  });
+
   const setupViewMode = document.querySelector<HTMLSelectElement>("#setup-view-mode");
   setupViewMode?.addEventListener("change", (event) => {
     state.setupViewMode = (event.currentTarget as HTMLSelectElement).value as SetupViewMode;
@@ -1412,10 +1881,7 @@ function bindEvents(): void {
     // Refresh only the steps container, NOT the whole panel — otherwise the
     // textarea would be recreated on every keystroke and the cursor would
     // jump to the end.
-    const steps = document.querySelector<HTMLDivElement>("#encrypt-steps");
-    if (steps) {
-      steps.innerHTML = renderEncryptStepsHtml();
-    }
+    repaintEncryptSteps();
   });
 
   const advancedToggle = document.querySelector<HTMLInputElement>("#advanced-mode-toggle");
@@ -1431,12 +1897,15 @@ function bindEvents(): void {
   encryptSelect?.addEventListener("change", (event) => {
     state.selectedEncryptCode = (event.currentTarget as HTMLSelectElement).value;
     state.selectedEncryptCodes = state.selectedEncryptCode ? [state.selectedEncryptCode] : [];
+    // Refresh the per-letter math and frequency charts for the new key.
+    repaintEncryptSteps();
   });
 
   const encryptMultiSelect = document.querySelector<HTMLSelectElement>("#encrypt-keys-multi");
   encryptMultiSelect?.addEventListener("change", (event) => {
     const select = event.currentTarget as HTMLSelectElement;
     state.selectedEncryptCodes = [...select.selectedOptions].map((option) => option.value);
+    repaintEncryptSteps();
   });
 
   const autoSelectKeys = document.querySelector<HTMLButtonElement>("#auto-select-keys");
@@ -1594,6 +2063,7 @@ function bindEvents(): void {
       usableEntries.map((entry) => entry.deckOrder)
     );
 
+    state.incomingShare = false; // acted on the received message
     const hasUsed = usableEntries.some((entry) => entry.status === "USED");
     state.decryptOutput = {
       plaintext,
@@ -1613,6 +2083,10 @@ function bindEvents(): void {
 
   bindSimulatorEvents();
   bindAttackLabEvents();
+  bindVisualizerEvents(() => state.deckBook);
+
+  // QR <img data-qr> placeholders resolve asynchronously after each paint.
+  hydrateQrImages();
 }
 
 // -- Two-Party Simulator ----------------------------------------------------
@@ -1715,18 +2189,111 @@ function bindAttackLabEvents(): void {
     state.attackLab.result = {
       cipherA: groupedFive(cipherA),
       cipherB: groupedFive(cipherB),
+      cipherARaw: cipherA,
+      cipherBRaw: cipherB,
       cipherDiff: groupedFive(numbersToLetters(cipherDiff)),
       plainDiff: groupedFive(numbersToLetters(plainDiff))
     };
-    flash("Attack ran. Compare the two diffs in the output.");
+    state.attackLab.cribOffset = 0;
+    flash("Attack ran. Now drag a crib below to pull the messages out.");
     render();
   });
 
   const reset = document.querySelector<HTMLButtonElement>("#lab-reset");
   reset?.addEventListener("click", () => {
-    state.attackLab = { plaintextA: "", plaintextB: "", reusedKey: "", result: null };
+    clearAutoSolve();
+    state.attackLab = {
+      plaintextA: "",
+      plaintextB: "",
+      reusedKey: "",
+      crib: "",
+      cribSide: "A",
+      cribOffset: 0,
+      result: null
+    };
     render();
   });
+
+  // Crib-dragging controls. Editing the crib or dragging the slider updates
+  // only the #crib-live subtree (see updateCribLive) so the input caret and
+  // the slider drag are never disrupted by a full re-render.
+  const cribWord = document.querySelector<HTMLInputElement>("#crib-word");
+  cribWord?.addEventListener("input", (event) => {
+    state.attackLab.crib = (event.currentTarget as HTMLInputElement).value;
+    state.attackLab.cribOffset = 0;
+    updateCribLive();
+  });
+
+  const cribSide = document.querySelector<HTMLSelectElement>("#crib-side");
+  cribSide?.addEventListener("change", (event) => {
+    state.attackLab.cribSide = (event.currentTarget as HTMLSelectElement).value as "A" | "B";
+    updateCribLive();
+  });
+
+  const cribOffset = document.querySelector<HTMLInputElement>("#crib-offset");
+  cribOffset?.addEventListener("input", (event) => {
+    state.attackLab.cribOffset = Number((event.currentTarget as HTMLInputElement).value);
+    updateCribLive();
+  });
+
+  bindCribHints();
+
+  const autoSolve = document.querySelector<HTMLButtonElement>("#crib-autosolve");
+  autoSolve?.addEventListener("click", runAutoSolve);
+}
+
+// Single shared handle so a running auto-solve can never stack with a second
+// click, a Reset, or leaving the panel.
+let autoSolveTimer: number | null = null;
+
+function clearAutoSolve(): void {
+  if (autoSolveTimer !== null) {
+    window.clearInterval(autoSolveTimer);
+    autoSolveTimer = null;
+  }
+}
+
+// Auto-solve: pick a real word from message A, drop it in as the crib, then
+// animate the slider from position 0 to the word's true offset. As it lands,
+// the matching slice of message B resolves into readable English — the whole
+// key-reuse break, played out hands-free.
+function runAutoSolve(): void {
+  clearAutoSolve();
+  const lab = state.attackLab;
+  if (!lab.result) {
+    return;
+  }
+  const plainA = normalizeAZ(lab.plaintextA);
+  const diffLen = differenceMod26(lab.result.cipherARaw, lab.result.cipherBRaw).length;
+  const cribLen = Math.min(5, plainA.length);
+  if (diffLen < 2 || cribLen < 2) {
+    flash("Need two longer messages to auto-solve.");
+    return;
+  }
+
+  // Take the crib from roughly the middle so there is visible travel, and
+  // never past where the crib would run off the end of the difference.
+  const target = Math.min(diffLen - cribLen, Math.max(1, Math.floor((diffLen - cribLen) / 2)));
+  lab.crib = plainA.slice(target, target + cribLen);
+  lab.cribSide = "A";
+  lab.cribOffset = 0;
+  render();
+
+  let current = 0;
+  autoSolveTimer = window.setInterval(() => {
+    // Bail if the attack was reset out from under the animation.
+    if (!state.attackLab.result) {
+      clearAutoSolve();
+      return;
+    }
+    current += 1;
+    state.attackLab.cribOffset = current;
+    updateCribLive();
+    if (current >= target) {
+      clearAutoSolve();
+      flash("Message B fell out — recovered from ciphertext alone, no key touched.");
+    }
+  }, 200);
 }
 
 function flash(message: string): void {

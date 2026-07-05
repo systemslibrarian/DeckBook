@@ -63,6 +63,30 @@ the public channel. The deck order itself is the secret.
 
 ## Feature Highlights
 
+### Interactive learning
+
+- **Watch It Work** — an animated visualizer that runs the cipher one card at
+  a time. A card flips off the deck, becomes a keystream number, and shifts one
+  letter of your message, with play / pause / step / speed controls. It is a
+  sandbox and never consumes real keys.
+- **Live letter-frequency histograms** — as you type in the Encrypt panel, two
+  bar charts update in real time: your plaintext (spiky, with typical-English
+  ghost bars) vs. your ciphertext (flat). The "no favorite letters" lesson,
+  visible instantly.
+- **Key Reuse Attack Lab with crib dragging** — encrypt two messages with the
+  same key, then crack them by hand. Type a guessed word ("crib"), slide it
+  along the ciphertext difference, and watch the other message leak out where
+  your guess is right. Ranked "most English-looking positions" hints included.
+  No key or deck order ever enters the attack — reuse alone leaks the plaintext.
+- **QR / share-link handoff** — every encrypted message produces a QR code and a
+  deep link carrying only the index code and ciphertext (never the deck order).
+  Scan it on another device; that device decrypts only if it already holds the
+  matching DeckBook. A real message crossing a real public channel.
+- **Printable physical deck sheet** — a print stylesheet outputs the deck order
+  as a clean sheet so you can arrange a real deck and verify a letter by hand.
+
+### Core cipher and key management
+
 - Secure deck generation using `crypto.getRandomValues()` (no `Math.random()`)
 - Fisher-Yates shuffle with rejection sampling for unbiased integer selection
 - 52-card deck model with consistent 0-51 mapping
@@ -71,6 +95,7 @@ the public channel. The deck order itself is the secret.
 - Receiver setup view with top-to-bottom checklist
 - A-Z modular encryption/decryption
 - Multi-deck message mode for long plaintexts
+- Two-Party Simulator (Alice / public channel / Bob)
 - Used/unused key tracking and explicit reuse warnings
 - Import/export DeckBook JSON (for educational simulation)
 - Local persistence in browser storage
@@ -151,8 +176,14 @@ The model demonstrates security only when:
 ## Project Structure
 
 - [index.html](index.html) app shell
+- [src/cipher.ts](src/cipher.ts) pure cipher core (encrypt/decrypt, deck, shuffle)
+- [src/analysis.ts](src/analysis.ts) pure attack/analysis math (crib dragging, frequencies)
+- [src/share.ts](src/share.ts) pure share-link encode/decode (QR payload)
+- [src/qr.ts](src/qr.ts) QR image hydration helper
+- [src/visualizer.ts](src/visualizer.ts) animated "Watch It Work" panel
 - [src/main.ts](src/main.ts) app logic and UI rendering
 - [src/styles.css](src/styles.css) visual design and responsive styles
+- [tests/](tests/) Vitest unit tests for cipher, analysis, and share modules
 - [vite.config.ts](vite.config.ts) Vite config for static deployment
 - [deploy-pages.yml](.github/workflows/deploy-pages.yml) GitHub Pages deployment workflow
 
