@@ -1352,7 +1352,7 @@ button:disabled {
 }
 
 /* Step chips on the core "do it" panels, so the sequence reads at a glance. */
-h2:has(> .step-chip) {
+h2.step-heading {
   display: flex;
   align-items: center;
   gap: 0.55rem;

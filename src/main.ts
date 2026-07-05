@@ -1346,7 +1346,7 @@ function render(): void {
       </section>
 
       <section class="panel controls" id="generate">
-        <h2><span class="step-chip" aria-hidden="true">1</span>Generate DeckBook</h2>
+        <h2 class="step-heading"><span class="step-chip" aria-hidden="true">1</span>Generate DeckBook</h2>
         <div class="control-row">
           <label for="mode">DeckBook size</label>
           <select id="mode" aria-label="DeckBook size mode">
@@ -1368,7 +1368,7 @@ function render(): void {
       </section>
 
       <section class="panel" id="key-list">
-        <h2><span class="step-chip" aria-hidden="true">2</span>Deck Key List</h2>
+        <h2 class="step-heading"><span class="step-chip" aria-hidden="true">2</span>Deck Key List</h2>
         <div class="pager">
           <p class="counts">Showing ${summary.total === 0 ? 0 : pageStart + 1}-${Math.min(pageEnd, summary.total)} of ${summary.total}</p>
           <div class="pager-controls">
@@ -1391,7 +1391,7 @@ function render(): void {
       </section>
 
       <section class="panel" id="receiver-setup">
-        <h2><span class="step-chip" aria-hidden="true">3</span>Receiver Setup View</h2>
+        <h2 class="step-heading"><span class="step-chip" aria-hidden="true">3</span>Receiver Setup View</h2>
         ${
           activeEntry
             ? `<p><strong>Deck Key:</strong> ${escapeHtml(activeEntry.indexCode)} | <strong>Fingerprint:</strong> ${escapeHtml(
@@ -1474,7 +1474,7 @@ function render(): void {
       </section>
 
       <section class="panel" id="encrypt-panel">
-        <h2><span class="step-chip" aria-hidden="true">4</span>Encrypt</h2>
+        <h2 class="step-heading"><span class="step-chip" aria-hidden="true">4</span>Encrypt</h2>
         <p>Spaces and punctuation are removed for this educational A-Z cipher.</p>
         <label for="encrypt-input">Plaintext message</label>
         <textarea id="encrypt-input" rows="4" placeholder="Enter plaintext message">${escapeHtml(state.encryptInput)}</textarea>
@@ -1539,7 +1539,7 @@ function render(): void {
       </section>
 
       <section class="panel ${state.incomingShare ? "incoming" : ""}" id="decrypt-panel">
-        <h2><span class="step-chip" aria-hidden="true">5</span>Decrypt</h2>
+        <h2 class="step-heading"><span class="step-chip" aria-hidden="true">5</span>Decrypt</h2>
         ${
           state.incomingShare
             ? `<p class="incoming-banner">An encrypted message arrived via share link. The index code and ciphertext below came off the public channel — the deck order did not. Press Decrypt: it works only if this device already holds the matching DeckBook.</p>`
