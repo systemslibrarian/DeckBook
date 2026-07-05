@@ -27,4 +27,4 @@ jobs:
       # asserts the thresholds in lighthouserc.json, and uploads a public
       # report whose URL is printed in the job log.
       - name: Run Lighthouse CI
-        run: npx --yes @lhci/cli@0.14.x autorun
+        run: npx --yes @lhci/cli@0.14.x autorun --config=./lighthouserc.json
