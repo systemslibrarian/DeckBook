@@ -728,13 +728,15 @@ button:disabled {
   }
 }
 
+/* Entrance uses transform only — never opacity — so content is always
+ * painted at full opacity. If the animation is throttled (e.g. a
+ * background/headless load, as Lighthouse does), the panels stay visible
+ * instead of getting stuck invisible and failing first-contentful-paint. */
 @keyframes fadeUp {
   from {
-    opacity: 0;
     transform: translateY(6px);
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
