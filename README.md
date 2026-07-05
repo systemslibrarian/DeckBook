@@ -85,6 +85,26 @@ the public channel. The deck order itself is the secret.
 - **Printable physical deck sheet** — a print stylesheet outputs the deck order
   as a clean sheet so you can arrange a real deck and verify a letter by hand.
 
+### Make it an experience
+
+- **Challenge mode ("Eve's Intercept")** — a shareable, deep-linkable CTF-style
+  puzzle. An operator reused one key for two messages; you play the
+  eavesdropper and recover both using crib dragging alone, with a live progress
+  meter and a confetti win state. Three puzzles from easy to hard; share a
+  specific one with `#play=<id>`.
+- **Story framing** — a running Alice → Bob mission with Eve on the wire ties
+  the steps, the simulator, and the challenge into one narrative.
+- **Installable, offline-capable PWA** — a web manifest and service worker make
+  DeckBook installable on a phone or museum kiosk and fully usable with no
+  network. Open Graph / Twitter cards give shared links a polished preview.
+
+### For educators
+
+- A ready-to-run [teaching guide](docs/teaching-guide.md) (objectives, a timed
+  45–60 min lesson mapped to the app, discussion questions, assessment,
+  standards tie-ins) and a printable [student worksheet](docs/worksheet.md).
+- An in-app **For Educators** panel and a **Glossary** of every key term.
+
 ### Guided, uncluttered layout
 
 - **Numbered step flow** — the core send/receive path is labelled 1–5
@@ -214,7 +234,10 @@ The model demonstrates security only when:
 - [src/visualizer.ts](src/visualizer.ts) animated "Watch It Work" panel
 - [src/main.ts](src/main.ts) app logic and UI rendering
 - [src/styles.css](src/styles.css) visual design and responsive styles
-- [tests/](tests/) Vitest unit tests for cipher, analysis, share, and card-face modules
+- [src/challenge.ts](src/challenge.ts) "Eve's Intercept" CTF puzzle module
+- [docs/](docs/) teaching guide and student worksheet
+- [scripts/generate-icons.mjs](scripts/generate-icons.mjs) PWA/social icon generator
+- [tests/](tests/) Vitest unit tests for cipher, analysis, share, card-face, and challenge modules
 - [e2e/](e2e/) Playwright end-to-end smoke tests
 - [vite.config.ts](vite.config.ts) Vite + Vitest config for static deployment
 - [playwright.config.ts](playwright.config.ts) Playwright config (starts the dev server)

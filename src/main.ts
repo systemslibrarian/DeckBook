@@ -28,6 +28,12 @@ import {
 import { buildShareUrl, parseShareFragment } from "./share";
 import { hydrateQrImages } from "./qr";
 import { bindVisualizerEvents, renderVisualizerPanel } from "./visualizer";
+import {
+  bindChallengeEvents,
+  renderChallengePanel,
+  selectPuzzle,
+  setChallengeHooks
+} from "./challenge";
 
 /* ============================================================================
  * DeckBook — educational cipher demo
@@ -158,7 +164,9 @@ const COLLAPSIBLE_PANELS: { id: string; title: string }[] = [
   { id: "absurd-scale", title: "Absurd Scale" },
   { id: "modern-crypto", title: "Why Modern Key Exchange Exists" },
   { id: "advanced-mode", title: "Advanced: Multi-Deck Messages" },
-  { id: "about-copy", title: "What is DeckBook?" }
+  { id: "about-copy", title: "What is DeckBook?" },
+  { id: "glossary", title: "Glossary" },
+  { id: "educators", title: "For Educators" }
 ];
 
 // Curated panel sequence for presenter mode — a guided arc from "what is
@@ -172,6 +180,7 @@ const PRESENTER_PANELS: { id: string; title: string }[] = [
   { id: "decrypt-panel", title: "Decrypt a Message" },
   { id: "simulator", title: "Two-Party Simulator" },
   { id: "attack-lab", title: "Key Reuse Attack Lab" },
+  { id: "challenge", title: "Challenge: Eve's Intercept" },
   { id: "modern-crypto", title: "Why Modern Key Exchange Exists" }
 ];
 
@@ -347,6 +356,18 @@ if (state.deckBook.length > 0) {
   state.activeViewCode = state.deckBook[0].indexCode;
 }
 
+// A challenge deep link (#play=<puzzleId>) opens Challenge mode on that
+// puzzle. Handled before the first render so the correct puzzle is shown.
+const playMatch = window.location.hash.replace(/^#/, "").match(/^play(?:=([a-z-]+))?$/);
+let incomingPlay = false;
+if (playMatch) {
+  incomingPlay = true;
+  if (playMatch[1]) {
+    selectPuzzle(playMatch[1]);
+  }
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+}
+
 // If the page was opened from a share link / QR scan, the fragment carries
 // the PUBLIC half of a transmission: index code(s) + ciphertext. Prefill
 // the Decrypt panel with it. Whether decryption works depends entirely on
@@ -359,12 +380,19 @@ if (incomingShare) {
   history.replaceState(null, "", window.location.pathname + window.location.search);
 }
 
+setChallengeHooks({ confetti: confettiBurst, flash });
+
 render();
 
 if (incomingShare) {
   document.querySelector("#decrypt-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   flash("Encrypted message received over the public channel. Decrypt it — if you hold the right DeckBook.");
   render();
+}
+
+if (incomingPlay) {
+  document.querySelector("#challenge")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  flash("Challenge loaded. You captured two ciphertexts — recover both messages.");
 }
 
 // The printable receiver sheet is toggled with a body class; clean it up
@@ -504,6 +532,29 @@ function playShuffleAnimation(): Promise<void> {
 // fragments. In dev and on GitHub Pages this is the page's own address.
 function shareBaseUrl(): string {
   return window.location.origin + window.location.pathname;
+}
+
+// A short celebratory confetti burst for solving a challenge. Pure DOM, no
+// dependency; skipped under prefers-reduced-motion.
+function confettiBurst(): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+  const colors = ["#e4ba58", "#7ecf92", "#e16b6b", "#a9ccee", "#f3d58e"];
+  const layer = document.createElement("div");
+  layer.className = "confetti-layer";
+  layer.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 80; i += 1) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece";
+    piece.style.left = `${(i / 80) * 100}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = `${(i % 10) * 40}ms`;
+    piece.style.transform = `translateY(0) rotate(${(i * 47) % 360}deg)`;
+    layer.appendChild(piece);
+  }
+  document.body.appendChild(layer);
+  window.setTimeout(() => layer.remove(), 2600);
 }
 
 function escapeHtml(value: string): string {
@@ -876,8 +927,8 @@ function renderSimulatorPanel(unusedEntries: DeckBookEntry[]): string {
         </div>
 
         <div class="channel" aria-label="Public channel">
-          <h3>Public Channel</h3>
-          <p class="party-hint">Anyone can read what passes through here.</p>
+          <h3>Public Channel <span class="eve-tag">👁 Eve is listening</span></h3>
+          <p class="party-hint">Eve the eavesdropper sees everything that crosses here — but never the deck order.</p>
           ${wire}
         </div>
 
@@ -1196,6 +1247,7 @@ function render(): void {
         <p class="subtitle">A card-based one-time keybook for teaching key distribution, one-time pads, stream ciphers, and the danger of key reuse.</p>
         <p class="prominent">The deck order is the key. The clue only tells you which key to use.</p>
         <p class="secondary">The index code can be public. The deck order cannot.</p>
+        <p class="mission">Your mission: get a secret to <strong>Bob</strong> while <strong>Eve</strong> listens on the wire. Your only advantage is a deck of cards you and Bob shuffled together — the deck order is a secret Eve doesn't have.</p>
         <p class="hero-steps">Five steps: <strong>1</strong> Generate keys → <strong>2</strong> Pick a key → <strong>3</strong> Prepare the deck → <strong>4</strong> Encrypt → <strong>5</strong> Decrypt. New here? Start the guided walkthrough.</p>
         <div class="button-row">
           <button type="button" id="presenter-start" aria-label="Enter full-screen presenter mode">▶ Presenter mode</button>
@@ -1495,6 +1547,8 @@ function render(): void {
 
       ${renderAttackLabPanel()}
 
+      ${renderChallengePanel()}
+
       <section class="panel" id="mistakes">
         <h2>What Goes Wrong?</h2>
         <label for="mistake-choice">Choose a failure mode</label>
@@ -1538,6 +1592,32 @@ function render(): void {
         <p>The system breaks if the deck order is exposed, reused, generated poorly, arranged incorrectly, or shared over an insecure channel.</p>
         <h3>Inspiration</h3>
         <p>This educational app is inspired by manual Solitaire-style encryption teaching material and adapts those ideas into a modern browser classroom demo.</p>
+      </section>
+
+      <section class="panel" id="glossary">
+        <h2>Glossary</h2>
+        <dl class="glossary">
+          <dt>Deck order</dt><dd>The secret. The exact top-to-bottom arrangement of 52 cards. There are 52! (~8.06 × 10⁶⁷) possible orders.</dd>
+          <dt>Index code</dt><dd>A public label (like <span class="mono">LANTERN-42</span>) that names which deck key to use. It reveals nothing about the order.</dd>
+          <dt>Keystream</dt><dd>The sequence of shift values the cipher adds to your letters. Here, each card contributes one value: <span class="mono">card value mod 26</span>.</dd>
+          <dt>Stream cipher</dt><dd>A cipher that encrypts one symbol at a time by combining it with a keystream.</dd>
+          <dt>One-time pad</dt><dd>A cipher whose key is random, as long as the message, and used only once. Unbreakable in theory — if those rules hold.</dd>
+          <dt>Key reuse / two-time pad</dt><dd>Using one key for two messages. It leaks the difference of the plaintexts and can be fully broken. Never do it.</dd>
+          <dt>Crib</dt><dd>A guessed word an attacker slides along ciphertext to recover text. See the Attack Lab.</dd>
+          <dt>Fingerprint</dt><dd>A short checksum of a deck order (from SHA-256). Two people compare it out loud to confirm identical decks.</dd>
+          <dt>Key distribution</dt><dd>The hard problem: getting the same secret to both people safely, before any message is sent.</dd>
+          <dt>KEM / ML-KEM</dt><dd>Key Encapsulation Mechanism — how modern (and post-quantum) systems establish a shared secret without meeting first.</dd>
+        </dl>
+      </section>
+
+      <section class="panel" id="educators">
+        <h2>For Educators</h2>
+        <p>DeckBook is a ready-to-run classroom exhibit — no accounts, no installs, works offline once loaded. A full lesson (45–60 min) maps onto the numbered steps and the Attack Lab and Challenge.</p>
+        <ul>
+          <li><a href="https://github.com/systemslibrarian/DeckBook/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a> — objectives, timed lesson flow, discussion questions, assessment, and standards tie-ins.</li>
+          <li><a href="https://github.com/systemslibrarian/DeckBook/blob/main/docs/worksheet.md" target="_blank" rel="noopener">Student worksheet</a> — a printable, self-guided path through the exhibit.</li>
+        </ul>
+        <p>Use <strong>Presenter mode</strong> (button at the top) for a full-screen, arrow-key, one-panel-at-a-time view on a projector or kiosk. Use <strong>Print physical deck sheet</strong> in Receiver Setup to pair the app with a real deck of cards.</p>
       </section>
 
       <section class="panel framing">
@@ -2159,6 +2239,7 @@ function bindEvents(): void {
   bindSimulatorEvents();
   bindAttackLabEvents();
   bindVisualizerEvents(() => state.deckBook);
+  bindChallengeEvents();
 
   // QR <img data-qr> placeholders resolve asynchronously after each paint.
   hydrateQrImages();

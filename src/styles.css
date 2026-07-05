@@ -119,6 +119,25 @@ h1 {
   color: #ffe8ab;
 }
 
+.mission {
+  margin: 0.7rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: rgb(126 207 146 / 8%);
+  border: 1px solid rgb(126 207 146 / 30%);
+  color: #e9f6ec;
+}
+
+.eve-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #ffb2b2;
+  border: 1px solid #8f5757;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+}
+
 .badge-grid {
   margin-top: 1rem;
   display: grid;
@@ -570,6 +589,27 @@ button:disabled {
 .mistake-copy {
   border-left: 3px solid #b58a3d;
   padding-left: 0.6rem;
+}
+
+.glossary {
+  margin: 0.5rem 0 0;
+  display: grid;
+  gap: 0.1rem 1rem;
+}
+
+.glossary dt {
+  color: #f3d58e;
+  font-weight: 700;
+  margin-top: 0.55rem;
+}
+
+.glossary dd {
+  margin: 0 0 0.2rem;
+  color: var(--text);
+}
+
+#educators a {
+  color: var(--accent);
 }
 
 .mono {
@@ -1330,6 +1370,133 @@ button:disabled {
 
 .hero-facts .badge-grid {
   margin-top: 0.6rem;
+}
+
+/* ==========================================================================
+ * Challenge mode ("Eve's Intercept")
+ * ======================================================================== */
+
+.challenge-panel {
+  border-color: #b58a3d;
+  background:
+    linear-gradient(145deg, rgb(228 186 88 / 8%), transparent 45%),
+    var(--panel);
+}
+
+.challenge-panel h2 {
+  color: #ffdf9c;
+}
+
+.chal-scenario {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.6rem;
+  color: #f0dcb0;
+  font-style: italic;
+}
+
+.chal-captures {
+  border: 1px solid #5b4c2f;
+  border-radius: 10px;
+  background: #15120e;
+  padding: 0.6rem 0.7rem;
+  margin: 0.7rem 0;
+}
+
+.chal-tool {
+  margin: 0.7rem 0;
+}
+
+.chal-answers {
+  border-top: 1px dashed #6a5630;
+  padding-top: 0.7rem;
+}
+
+.chal-answers label {
+  display: block;
+  margin: 0.4rem 0 0.15rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.chal-hint-text {
+  color: #ffd199;
+  background: rgb(181 138 61 / 12%);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+
+.chal-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem 0;
+}
+
+.chal-meter-label {
+  width: 9.5rem;
+  flex-shrink: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.chal-meter-track {
+  flex: 1;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #241c12;
+  border: 1px solid #4a3f28;
+  overflow: hidden;
+}
+
+.chal-meter-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8a6f2c, #7ecf92);
+  transition: width 200ms ease;
+}
+
+.chal-win {
+  margin-top: 0.7rem;
+  border: 1px solid var(--ok);
+  border-radius: 12px;
+  background: rgb(126 207 146 / 12%);
+  padding: 0.8rem;
+}
+
+.chal-win-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.3rem;
+  color: #b8ecc4;
+}
+
+/* Confetti burst on solving a challenge. */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2500;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation: confetti-fall 2.4s cubic-bezier(0.3, 0.6, 0.4, 1) both;
+}
+
+@keyframes confetti-fall {
+  0% {
+    top: -12px;
+    opacity: 1;
+  }
+  100% {
+    top: 104vh;
+    opacity: 0.9;
+  }
 }
 
 /* ==========================================================================

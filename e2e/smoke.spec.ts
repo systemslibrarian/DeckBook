@@ -98,6 +98,21 @@ test("reference panels start collapsed and expand on click", async ({ page }) =>
   await expect(page.locator(".hero-facts .badge-grid")).toBeHidden();
 });
 
+test("Challenge mode reaches a win state when both messages are recovered", async ({ page }) => {
+  await page.goto("/");
+
+  const challenge = page.locator("#challenge");
+  await expect(challenge).toBeVisible();
+  // Default puzzle is "dockside": MEETATTHEHARBOR / BRINGTHELANTERN.
+  await page.selectOption("#chal-puzzle", "dockside");
+
+  await page.locator("#chal-guess-a").fill("MEETATTHEHARBOR");
+  await page.locator("#chal-guess-b").fill("BRINGTHELANTERN");
+
+  await expect(challenge.locator(".chal-win")).toBeVisible();
+  await expect(challenge.locator(".chal-win")).toContainText("Cracked it");
+});
+
 test("Watch It Work steps through the cipher one card at a time", async ({ page }) => {
   await page.goto("/");
   const viz = page.locator("#visualizer");
