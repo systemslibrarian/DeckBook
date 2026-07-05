@@ -1,0 +1,30 @@
+name: Lighthouse
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Runs Lighthouse against the built static site (dist/) three times,
+      # asserts the thresholds in lighthouserc.json, and uploads a public
+      # report whose URL is printed in the job log.
+      - name: Run Lighthouse CI
+        run: npx --yes @lhci/cli@0.14.x autorun

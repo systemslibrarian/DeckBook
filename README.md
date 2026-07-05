@@ -1,5 +1,8 @@
 # DeckBook
 
+[![CI](https://github.com/systemslibrarian/DeckBook/actions/workflows/ci.yml/badge.svg)](https://github.com/systemslibrarian/DeckBook/actions/workflows/ci.yml)
+[![Lighthouse](https://github.com/systemslibrarian/DeckBook/actions/workflows/lighthouse.yml/badge.svg)](https://github.com/systemslibrarian/DeckBook/actions/workflows/lighthouse.yml)
+
 A card-based one-time keybook demo for teaching key distribution, one-time pads, stream ciphers, and the danger of key reuse.
 
 DeckBook is an educational exhibit-style web app (Cipher Museum theme) that models this core idea:
@@ -23,6 +26,10 @@ DeckBook is an educational exhibit-style web app (Cipher Museum theme) that mode
   and the accessibility audits). Both suites run on every push via CI.
 - **Lean & offline:** fully client-side, no backend. The production bundle is
   ~34 KB JS + ~6 KB CSS gzipped, and installs as an offline-capable PWA.
+- **Lighthouse CI:** [lighthouse.yml](.github/workflows/lighthouse.yml) runs
+  Lighthouse (desktop preset, 3 runs) against the built site on every push and
+  pull request, gating accessibility and reporting performance, best-practices,
+  and SEO. Each run uploads a public report (URL in the job log).
 
 ## Inspiration
 
@@ -259,7 +266,8 @@ The model demonstrates security only when:
 - [e2e/](e2e/) Playwright end-to-end smoke tests
 - [vite.config.ts](vite.config.ts) Vite + Vitest config for static deployment
 - [playwright.config.ts](playwright.config.ts) Playwright config (starts the dev server)
-- [ci.yml](.github/workflows/ci.yml) build + unit + e2e test workflow
+- [ci.yml](.github/workflows/ci.yml) build + unit + e2e (incl. a11y) workflow
+- [lighthouse.yml](.github/workflows/lighthouse.yml) + [lighthouserc.json](lighthouserc.json) Lighthouse CI
 - [deploy-pages.yml](.github/workflows/deploy-pages.yml) GitHub Pages deployment workflow
 
 ## License
