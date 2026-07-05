@@ -94,6 +94,17 @@ main.museum-shell {
   font-size: 0.84rem;
 }
 
+.kicker-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.kicker-link:hover,
+.kicker-link:focus-visible {
+  border-bottom-color: currentColor;
+}
+
 h1 {
   margin: 0.15rem 0;
   font-size: clamp(2rem, 5vw, 3.6rem);

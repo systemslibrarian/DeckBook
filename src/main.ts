@@ -1242,7 +1242,7 @@ function render(): void {
     <main id="main-content" class="museum-shell" tabindex="-1">
       <div class="sr-only" role="status" aria-live="polite">${state.message ? escapeHtml(state.message) : ""}</div>
       <section class="hero panel">
-        <p class="kicker">Cipher Museum Exhibit</p>
+        <p class="kicker"><a class="kicker-link" href="https://ciphermuseum.com/" target="_blank" rel="noopener">Cipher Museum Exhibit ↗</a></p>
         <h1>DeckBook</h1>
         <p class="subtitle">A card-based one-time keybook for teaching key distribution, one-time pads, stream ciphers, and the danger of key reuse.</p>
         <p class="prominent">The deck order is the key. The clue only tells you which key to use.</p>
