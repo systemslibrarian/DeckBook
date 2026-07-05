@@ -135,6 +135,27 @@ npm run build
 npm run preview
 ```
 
+## Testing
+
+- **Unit tests (Vitest)** cover the pure cipher, attack-analysis, share-link,
+  and card-face modules:
+
+  ```bash
+  npm test
+  ```
+
+- **End-to-end tests (Playwright)** drive the real UI through the full
+  protocol — generate a DeckBook, encrypt, follow the share link, and decrypt
+  back to the original plaintext — plus the "a device without the DeckBook
+  cannot read the message" case and the animated visualizer:
+
+  ```bash
+  npm run test:e2e
+  ```
+
+Both suites run automatically on every push and pull request via
+[ci.yml](.github/workflows/ci.yml).
+
 ## GitHub Pages Deployment
 
 This repo includes a Pages workflow at [deploy-pages.yml](.github/workflows/deploy-pages.yml).
@@ -183,8 +204,11 @@ The model demonstrates security only when:
 - [src/visualizer.ts](src/visualizer.ts) animated "Watch It Work" panel
 - [src/main.ts](src/main.ts) app logic and UI rendering
 - [src/styles.css](src/styles.css) visual design and responsive styles
-- [tests/](tests/) Vitest unit tests for cipher, analysis, and share modules
-- [vite.config.ts](vite.config.ts) Vite config for static deployment
+- [tests/](tests/) Vitest unit tests for cipher, analysis, share, and card-face modules
+- [e2e/](e2e/) Playwright end-to-end smoke tests
+- [vite.config.ts](vite.config.ts) Vite + Vitest config for static deployment
+- [playwright.config.ts](playwright.config.ts) Playwright config (starts the dev server)
+- [ci.yml](.github/workflows/ci.yml) build + unit + e2e test workflow
 - [deploy-pages.yml](.github/workflows/deploy-pages.yml) GitHub Pages deployment workflow
 
 ## License
