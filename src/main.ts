@@ -144,7 +144,22 @@ type AppState = {
   // Full-screen, one-panel-at-a-time presentation mode (projector / kiosk).
   presenterMode: boolean;
   presenterIndex: number;
+  // Ids of expository panels currently collapsed (see COLLAPSIBLE_PANELS).
+  collapsed: Set<string>;
 };
+
+// Reference/expository panels that collapse into a one-line disclosure so the
+// page stays short. They hold reading, not controls, so they start collapsed;
+// the interactive step panels are never in this list. Order is display order.
+const COLLAPSIBLE_PANELS: { id: string; title: string }[] = [
+  { id: "how-it-works", title: "How the Cipher Works" },
+  { id: "security-model", title: "Security Model and Warning" },
+  { id: "mistakes", title: "What Goes Wrong?" },
+  { id: "absurd-scale", title: "Absurd Scale" },
+  { id: "modern-crypto", title: "Why Modern Key Exchange Exists" },
+  { id: "advanced-mode", title: "Advanced: Multi-Deck Messages" },
+  { id: "about-copy", title: "What is DeckBook?" }
+];
 
 // Curated panel sequence for presenter mode — a guided arc from "what is
 // this" through a live encrypt/decrypt to the modern-crypto payoff. Each id
@@ -321,7 +336,9 @@ const state: AppState = {
   },
   incomingShare: false,
   presenterMode: false,
-  presenterIndex: 0
+  presenterIndex: 0,
+  // Start every reference panel collapsed so the first view is short.
+  collapsed: new Set(COLLAPSIBLE_PANELS.map((panel) => panel.id))
 };
 
 if (state.deckBook.length > 0) {
@@ -635,9 +652,12 @@ function openGuideStep(step: number): void {
   state.walkthroughActive = true;
   state.walkthroughDismissed = false;
   saveGuideDismissed(false);
+  // If the step points at a collapsed reference panel, expand it so the
+  // walkthrough never scrolls to hidden content.
+  const targetId = WALKTHROUGH_STEPS[state.walkthroughStep].targetId;
+  state.collapsed.delete(targetId);
   render();
-  const target = document.querySelector(`#${WALKTHROUGH_STEPS[state.walkthroughStep].targetId}`);
-  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.querySelector(`#${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function finishGuide(): void {
@@ -1176,19 +1196,23 @@ function render(): void {
         <p class="subtitle">A card-based one-time keybook for teaching key distribution, one-time pads, stream ciphers, and the danger of key reuse.</p>
         <p class="prominent">The deck order is the key. The clue only tells you which key to use.</p>
         <p class="secondary">The index code can be public. The deck order cannot.</p>
+        <p class="hero-steps">Five steps: <strong>1</strong> Generate keys → <strong>2</strong> Pick a key → <strong>3</strong> Prepare the deck → <strong>4</strong> Encrypt → <strong>5</strong> Decrypt. New here? Start the guided walkthrough.</p>
         <div class="button-row">
           <button type="button" id="presenter-start" aria-label="Enter full-screen presenter mode">▶ Presenter mode</button>
         </div>
-        <div class="badge-grid" role="list" aria-label="Reality labels">
-          <span role="listitem">Historical inspiration: Solitaire / manual ciphers</span>
-          <span role="listitem">Educational value: High</span>
-          <span role="listitem">Modern production security: Not recommended</span>
-          <span role="listitem">Core lesson: Key distribution and one-time key use</span>
-          <span role="listitem">Keyspace: 52! possible deck orders</span>
-          <span role="listitem">Approximate size: 8.06 × 10^67</span>
-          <span role="listitem">One deck key encrypts: 52 A-Z letters</span>
-          <span role="listitem">Reuse allowed: Never</span>
-        </div>
+        <details class="hero-facts">
+          <summary>At a glance</summary>
+          <div class="badge-grid" role="list" aria-label="Reality labels">
+            <span role="listitem">Historical inspiration: Solitaire / manual ciphers</span>
+            <span role="listitem">Educational value: High</span>
+            <span role="listitem">Modern production security: Not recommended</span>
+            <span role="listitem">Core lesson: Key distribution and one-time key use</span>
+            <span role="listitem">Keyspace: 52! possible deck orders</span>
+            <span role="listitem">Approximate size: 8.06 × 10^67</span>
+            <span role="listitem">One deck key encrypts: 52 A-Z letters</span>
+            <span role="listitem">Reuse allowed: Never</span>
+          </div>
+        </details>
       </section>
 
       ${
@@ -1253,7 +1277,7 @@ function render(): void {
 
       ${renderVisualizerPanel(state.deckBook)}
 
-      <section class="panel warning-panel">
+      <section class="panel warning-panel" id="security-model">
         <h2>Security Model and Warning</h2>
         <p><strong>DeckBook is an educational physical-key model, not production cryptography.</strong> Its security comes from pre-shared secret deck orders, one-time use, and disciplined key handling.</p>
         <p><strong>Do not use DeckBook to protect real secrets. Use modern, audited cryptographic tools for real security.</strong></p>
@@ -1269,7 +1293,7 @@ function render(): void {
       </section>
 
       <section class="panel controls" id="generate">
-        <h2>Generate DeckBook</h2>
+        <h2><span class="step-chip" aria-hidden="true">1</span>Generate DeckBook</h2>
         <div class="control-row">
           <label for="mode">DeckBook size</label>
           <select id="mode" aria-label="DeckBook size mode">
@@ -1291,7 +1315,7 @@ function render(): void {
       </section>
 
       <section class="panel" id="key-list">
-        <h2>Deck Key List</h2>
+        <h2><span class="step-chip" aria-hidden="true">2</span>Deck Key List</h2>
         <div class="pager">
           <p class="counts">Showing ${summary.total === 0 ? 0 : pageStart + 1}-${Math.min(pageEnd, summary.total)} of ${summary.total}</p>
           <div class="pager-controls">
@@ -1314,7 +1338,7 @@ function render(): void {
       </section>
 
       <section class="panel" id="receiver-setup">
-        <h2>Receiver Setup View</h2>
+        <h2><span class="step-chip" aria-hidden="true">3</span>Receiver Setup View</h2>
         ${
           activeEntry
             ? `<p><strong>Deck Key:</strong> ${escapeHtml(activeEntry.indexCode)} | <strong>Fingerprint:</strong> ${escapeHtml(
@@ -1377,7 +1401,7 @@ function render(): void {
       </section>
 
       <section class="panel" id="encrypt-panel">
-        <h2>Encrypt</h2>
+        <h2><span class="step-chip" aria-hidden="true">4</span>Encrypt</h2>
         <p>Spaces and punctuation are removed for this educational A-Z cipher.</p>
         <label for="encrypt-input">Plaintext message</label>
         <textarea id="encrypt-input" rows="4" placeholder="Enter plaintext message">${escapeHtml(state.encryptInput)}</textarea>
@@ -1442,7 +1466,7 @@ function render(): void {
       </section>
 
       <section class="panel ${state.incomingShare ? "incoming" : ""}" id="decrypt-panel">
-        <h2>Decrypt</h2>
+        <h2><span class="step-chip" aria-hidden="true">5</span>Decrypt</h2>
         ${
           state.incomingShare
             ? `<p class="incoming-banner">An encrypted message arrived via share link. The index code and ciphertext below came off the public channel — the deck order did not. Press Decrypt: it works only if this device already holds the matching DeckBook.</p>`
@@ -1529,7 +1553,55 @@ function render(): void {
   `;
 
   bindEvents();
+  applyCollapsibles();
   applyPresenterMode();
+}
+
+// Turn each reference panel into a native-feeling disclosure: its <h2>
+// becomes a keyboard-operable toggle and everything below it is hidden while
+// collapsed. Done post-render (the template stays plain sections) and is
+// idempotent because render() rebuilds the DOM fresh each time.
+function applyCollapsibles(): void {
+  for (const { id } of COLLAPSIBLE_PANELS) {
+    const section = document.querySelector<HTMLElement>(`#${id}`);
+    const heading = section?.querySelector<HTMLHeadingElement>(":scope > h2");
+    if (!section || !heading) {
+      continue;
+    }
+
+    const isCollapsed = state.collapsed.has(id);
+    section.classList.add("collapsible");
+    section.classList.toggle("is-collapsed", isCollapsed);
+
+    // Move everything after the heading into a body wrapper we can hide.
+    const body = document.createElement("div");
+    body.className = "collapsible-body";
+    body.id = `${id}-body`;
+    [...section.children].filter((child) => child !== heading).forEach((child) => body.appendChild(child));
+    section.appendChild(body);
+
+    // Put a real <button> inside the <h2> so the element keeps its heading
+    // semantics (document outline) while the button provides the disclosure
+    // control with proper aria-expanded/controls.
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "collapsible-toggle";
+    button.setAttribute("aria-expanded", String(!isCollapsed));
+    button.setAttribute("aria-controls", body.id);
+    button.innerHTML = heading.innerHTML;
+    heading.innerHTML = "";
+    heading.classList.add("collapsible-heading");
+    heading.appendChild(button);
+
+    button.addEventListener("click", () => {
+      if (state.collapsed.has(id)) {
+        state.collapsed.delete(id);
+      } else {
+        state.collapsed.add(id);
+      }
+      render();
+    });
+  }
 }
 
 // Presenter mode post-processing. render() rebuilds the panels fresh each
@@ -1559,6 +1631,9 @@ function applyPresenterMode(): void {
     }
     el.style.display = "none";
   });
+  // A presented panel is always shown expanded, even if it is collapsed in
+  // the normal scrolling view.
+  main.querySelector<HTMLElement>(`#${currentId}`)?.classList.remove("is-collapsed");
 
   const bar = document.createElement("div");
   bar.className = "presenter-bar";

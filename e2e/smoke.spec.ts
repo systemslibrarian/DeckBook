@@ -76,6 +76,28 @@ test("a device without the DeckBook cannot read a share link", async ({ browser 
   await receiver.close();
 });
 
+test("reference panels start collapsed and expand on click", async ({ page }) => {
+  await page.goto("/");
+
+  const about = page.locator("#about-copy");
+  const body = page.locator("#about-copy-body");
+  const toggle = about.locator(".collapsible-toggle");
+
+  // Collapsed by default: the body is hidden and the toggle reports it.
+  await expect(about).toHaveClass(/is-collapsed/);
+  await expect(body).toBeHidden();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+  // Expands on click.
+  await toggle.click();
+  await expect(about).not.toHaveClass(/is-collapsed/);
+  await expect(body).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  // The hero "at a glance" facts are collapsed by default too.
+  await expect(page.locator(".hero-facts .badge-grid")).toBeHidden();
+});
+
 test("Watch It Work steps through the cipher one card at a time", async ({ page }) => {
   await page.goto("/");
   const viz = page.locator("#visualizer");

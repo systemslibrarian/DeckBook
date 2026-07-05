@@ -85,6 +85,16 @@ the public channel. The deck order itself is the secret.
 - **Printable physical deck sheet** — a print stylesheet outputs the deck order
   as a clean sheet so you can arrange a real deck and verify a letter by hand.
 
+### Guided, uncluttered layout
+
+- **Numbered step flow** — the core send/receive path is labelled 1–5
+  (Generate → Pick a key → Prepare the deck → Encrypt → Decrypt) with a compact
+  overview in the hero, so the sequence is obvious at a glance.
+- **Collapsible reference sections** — the expository panels (How the Cipher
+  Works, Security Model, What is DeckBook?, and the rest) start collapsed as
+  keyboard-operable disclosures, keeping the page short; the guided walkthrough
+  and presenter mode auto-expand whatever they navigate to.
+
 ### Core cipher and key management
 
 - Secure deck generation using `crypto.getRandomValues()` (no `Math.random()`)
