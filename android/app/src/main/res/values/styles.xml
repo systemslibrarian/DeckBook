@@ -13,6 +13,11 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Match the app's dark theme: solid dark status/nav bars with light
+             (white) icons so the system bars blend into the DeckBook UI. -->
+        <item name="android:statusBarColor">#FF11100C</item>
+        <item name="android:navigationBarColor">#FF11100C</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 

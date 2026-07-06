@@ -91,8 +91,76 @@ main.museum-shell {
    marketing hero and the Quick Start intro so the app opens on the teaching
    content. The Guided Walkthrough and everything below stay. Web is unaffected. */
 body.native-app .hero,
-body.native-app #quick-start {
+body.native-app #quick-start,
+body.native-app .web-only {
   display: none;
+}
+
+/* Keep content clear of the status bar / camera cutout and the gesture nav
+   bar / home indicator (viewport-fit=cover exposes these insets). */
+body.native-app .museum-shell {
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Grid children default to min-width:auto, so any child with wide intrinsic
+   content (e.g. the nav's no-wrap chip row) would stretch the whole column and
+   force horizontal scrolling. Let them shrink so everything fits the phone. */
+body.native-app .museum-shell > * {
+  min-width: 0;
+}
+
+/* Sticky section-jump bar, native app only. A horizontally scrollable row of
+   chips pinned below the status bar. */
+body.native-app .app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0 0 0.75rem;
+  padding-top: env(safe-area-inset-top);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+body.native-app .app-nav-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+  padding: 0.55rem 0.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.native-app .app-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+body.native-app .app-nav-chip {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  /* Comfortable touch target. */
+  min-height: 40px;
+}
+
+body.native-app .app-nav-chip:active {
+  background: #2a2416;
+}
+
+/* Lift toasts (e.g. the "press back again to exit" hint) above the gesture
+   nav bar / home indicator so they aren't hidden behind it. */
+body.native-app .toast {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
 }
 
 .kicker {

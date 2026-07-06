@@ -185,6 +185,26 @@ const PRESENTER_PANELS: { id: string; title: string }[] = [
   { id: "modern-crypto", title: "Why Modern Key Exchange Exists" }
 ];
 
+// Section jump-targets for the native app's sticky nav bar. Each id must match
+// a section rendered in the main template. Web has its full landing page and
+// doesn't show this bar.
+const NAV_SECTIONS: { id: string; label: string }[] = [
+  { id: "how-it-works", label: "How it Works" },
+  { id: "visualizer", label: "Watch It Work" },
+  { id: "generate", label: "Generate" },
+  { id: "encrypt-panel", label: "Encrypt" },
+  { id: "decrypt-panel", label: "Decrypt" },
+  { id: "attack-lab", label: "Attack Lab" },
+  { id: "challenge", label: "Challenge" }
+];
+
+function renderAppNav(): string {
+  const chips = NAV_SECTIONS.map(
+    (s) => `<button type="button" class="app-nav-chip" data-jump="${s.id}">${s.label}</button>`
+  ).join("");
+  return `<nav class="app-nav" aria-label="Jump to section"><div class="app-nav-scroll">${chips}</div></nav>`;
+}
+
 // ---------------------------------------------------------------------------
 // 2. App state and bootstrap
 // ---------------------------------------------------------------------------
@@ -419,6 +439,33 @@ if (isNativeApp) {
 } else {
   void import("virtual:pwa-register").then(({ registerSW }) => {
     registerSW({ immediate: true });
+  });
+}
+
+// Android hardware back button. Close the presenter overlay if it's open;
+// otherwise require a second back press within 2s to leave the app, so a stray
+// tap doesn't kick the user out mid-lesson.
+if (isNativeApp) {
+  void import("@capacitor/app").then(({ App }) => {
+    let backArmed = false;
+    let backTimer = 0;
+    void App.addListener("backButton", () => {
+      if (state.presenterMode) {
+        exitPresenter();
+        return;
+      }
+      if (backArmed) {
+        void App.exitApp();
+        return;
+      }
+      backArmed = true;
+      flash("Press back again to exit.");
+      render(); // flash() only repaints on clear; show the toast now.
+      window.clearTimeout(backTimer);
+      backTimer = window.setTimeout(() => {
+        backArmed = false;
+      }, 2000);
+    });
   });
 }
 
@@ -757,6 +804,16 @@ function finishGuide(): void {
   saveGuideDismissed(true);
   flash("Guided walkthrough completed.");
   render();
+}
+
+// Jump to a section from the native app's nav bar: expand it first if it's a
+// collapsed reference panel, then smooth-scroll it to the top.
+function jumpTo(id: string): void {
+  if (state.collapsed.has(id)) {
+    state.collapsed.delete(id);
+    render();
+  }
+  document.querySelector(`#${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // Resolve which decks will encrypt the current plaintext, in order. Returns
@@ -1281,6 +1338,7 @@ function render(): void {
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <main id="main-content" class="museum-shell" tabindex="-1">
       <div class="sr-only" role="status" aria-live="polite">${state.message ? escapeHtml(state.message) : ""}</div>
+      ${isNativeApp ? renderAppNav() : ""}
       <section class="hero panel">
         <p class="kicker"><a class="kicker-link" href="https://ciphermuseum.com/" target="_blank" rel="noopener">Cipher Museum Exhibit ↗</a></p>
         <h1>DeckBook</h1>
@@ -1688,7 +1746,7 @@ function render(): void {
       <section class="panel" id="educators">
         <h2>For Educators</h2>
         <p>DeckBook is a ready-to-run classroom exhibit — no accounts, no installs, works offline once loaded. A full lesson (45–60 min) maps onto the numbered steps and the Attack Lab and Challenge.</p>
-        <ul>
+        <ul class="web-only">
           <li><a href="https://github.com/systemslibrarian/DeckBook/blob/main/docs/teaching-guide.md" target="_blank" rel="noopener">Teaching guide</a> — objectives, timed lesson flow, discussion questions, assessment, and standards tie-ins.</li>
           <li><a href="https://github.com/systemslibrarian/DeckBook/blob/main/docs/worksheet.md" target="_blank" rel="noopener">Student worksheet</a> — a printable, self-guided path through the exhibit.</li>
         </ul>
@@ -1819,6 +1877,14 @@ function exitPresenter(): void {
 }
 
 function bindEvents(): void {
+  // Native app section-jump nav (absent on web).
+  document.querySelectorAll<HTMLButtonElement>(".app-nav-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const id = chip.dataset.jump;
+      if (id) jumpTo(id);
+    });
+  });
+
   const modeSelect = document.querySelector<HTMLSelectElement>("#mode");
   modeSelect?.addEventListener("change", (event) => {
     const next = (event.currentTarget as HTMLSelectElement).value as DeckMode;
