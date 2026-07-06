@@ -163,6 +163,8 @@ the public channel. The deck order itself is the secret.
 - TypeScript
 - Vanilla CSS
 - Fully client-side (no backend)
+- Capacitor (Android/iOS) and Tauri (desktop) native packaging — see
+  [Native Apps](#native-apps)
 
 ## Local Development
 
@@ -226,6 +228,47 @@ This repo includes a Pages workflow at [deploy-pages.yml](.github/workflows/depl
 - Push to `main`.
 - Workflow builds the app and deploys `dist/` to GitHub Pages.
 
+## Native Apps
+
+The same client-side build is packaged as installable native apps — nothing in
+`src/` changes. Mobile uses [Capacitor](https://capacitorjs.com/) (a native
+WebView shell around `dist/`), and desktop uses [Tauri](https://tauri.app/)
+(the OS's own WebView plus a small Rust host, so a build is a few MB rather than
+Electron's ~100 MB).
+
+| Target | Tooling | Local command | CI |
+| --- | --- | --- | --- |
+| Android | Capacitor | `npm run cap:android` (opens Android Studio) | [mobile.yml](.github/workflows/mobile.yml) → debug `.apk` |
+| iOS | Capacitor | `npm run cap:ios` (opens Xcode, needs macOS) | [mobile.yml](.github/workflows/mobile.yml) → unsigned build |
+| Windows / macOS / Linux | Tauri | `npm run tauri:dev` / `npm run tauri:build` | [desktop-tauri.yml](.github/workflows/desktop-tauri.yml) → installers |
+
+- **App identity:** bundle ID `com.systemslibrarian.deckbook`, name **DeckBook**.
+- **Native projects** (`android/`, `ios/`, `src-tauri/`) are committed. After
+  changing web code, run `npm run cap:sync` to copy the fresh `dist/` into the
+  mobile projects (the Tauri `beforeBuildCommand` rebuilds `dist/` automatically).
+- **Icons** for all native targets are generated from the DeckBook mark with
+  `npm run icons:native` (Tauri icons via `npx tauri icon`).
+
+### Build prerequisites
+
+- **Android:** JDK 21 + Android SDK (Android Studio). The Windows dev machine
+  can scaffold and edit the project; CI's Linux runner produces the `.apk`.
+- **iOS:** a **Mac** with Xcode — required to compile. CI's macOS runner builds
+  an unsigned app; a signed `.ipa` for the App Store needs an Apple Developer
+  certificate + provisioning profile (add as CI secrets).
+- **Desktop:** the Rust toolchain (`rustup`). Tauri uses WebView2 on Windows,
+  WKWebView on macOS, and WebKitGTK on Linux.
+
+### CI artifacts and releases
+
+Both workflows run on every push/PR and upload build artifacts. The desktop
+workflow additionally attaches installers to a **draft GitHub Release** when you
+push a version tag:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
 ## Accessibility and Mobile Notes
 
 The UI is designed to be usable on small screens and with keyboard navigation.
@@ -262,6 +305,10 @@ The model demonstrates security only when:
 - [src/challenge.ts](src/challenge.ts) "Eve's Intercept" CTF puzzle module
 - [docs/](docs/) teaching guide and student worksheet
 - [scripts/generate-icons.mjs](scripts/generate-icons.mjs) PWA/social icon generator
+- [scripts/generate-native-icons.mjs](scripts/generate-native-icons.mjs) native Android/iOS icon generator
+- [capacitor.config.ts](capacitor.config.ts) Capacitor config (mobile shell over `dist/`)
+- [android/](android/) + [ios/](ios/) Capacitor native mobile projects
+- [src-tauri/](src-tauri/) Tauri desktop app (Rust host + `tauri.conf.json`)
 - [tests/](tests/) Vitest unit tests for cipher, analysis, share, card-face, and challenge modules
 - [e2e/](e2e/) Playwright end-to-end smoke tests
 - [vite.config.ts](vite.config.ts) Vite + Vitest config for static deployment
@@ -269,6 +316,8 @@ The model demonstrates security only when:
 - [ci.yml](.github/workflows/ci.yml) build + unit + e2e (incl. a11y) workflow
 - [lighthouse.yml](.github/workflows/lighthouse.yml) + [lighthouserc.json](lighthouserc.json) Lighthouse CI
 - [deploy-pages.yml](.github/workflows/deploy-pages.yml) GitHub Pages deployment workflow
+- [mobile.yml](.github/workflows/mobile.yml) Capacitor Android/iOS build workflow
+- [desktop-tauri.yml](.github/workflows/desktop-tauri.yml) Tauri desktop build/release workflow
 
 ## License
 

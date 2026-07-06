@@ -9,7 +9,14 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "icons": "node scripts/generate-icons.mjs",
-    "screenshots": "node scripts/capture-screenshots.mjs"
+    "icons:native": "node scripts/generate-native-icons.mjs",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "cap:sync": "npm run build && cap sync",
+    "cap:android": "npm run build && cap sync android && cap open android",
+    "cap:ios": "npm run build && cap sync ios && cap open ios",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "repository": {
     "type": "git",
@@ -30,7 +37,12 @@
   "homepage": "https://github.com/systemslibrarian/DeckBook#readme",
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
     "@playwright/test": "^1.61.1",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/qrcode": "^1.5.6",
     "axe-core": "^4.12.1",
     "typescript": "^5.6.0",

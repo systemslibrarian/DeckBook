@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DeckBook</string>
+    <string name="title_activity_main">DeckBook</string>
+    <string name="package_name">com.systemslibrarian.deckbook</string>
+    <string name="custom_url_scheme">com.systemslibrarian.deckbook</string>
+</resources>
