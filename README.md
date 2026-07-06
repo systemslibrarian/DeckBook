@@ -299,6 +299,21 @@ For CI, the same config falls back to environment variables
 `DECKBOOK_KEY_PASSWORD`) so a release job can decode a base64 keystore secret
 and sign without a local `key.properties`.
 
+The `android-release` job in [mobile.yml](.github/workflows/mobile.yml) does
+exactly this on a version tag. Add these **repository secrets** (Settings →
+Secrets and variables → Actions) to enable it:
+
+| Secret | Value |
+| --- | --- |
+| `DECKBOOK_KEYSTORE_BASE64` | `base64 -w0 deckbook-release.jks` output |
+| `DECKBOOK_STORE_PASSWORD` | keystore password |
+| `DECKBOOK_KEY_ALIAS` | key alias (e.g. `deckbook`) |
+| `DECKBOOK_KEY_PASSWORD` | key password |
+
+Pushing a `v*` tag then builds a signed `.aab` and attaches it to the tag's
+draft release. Without the secrets the job fails fast with a clear message; the
+debug `.apk` job is unaffected.
+
 ### One-command device redeploy
 
 With a phone attached over USB (debugging authorized), deploy the latest code:
