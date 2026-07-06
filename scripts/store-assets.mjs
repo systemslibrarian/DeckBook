@@ -83,12 +83,13 @@ async function shot(name) {
   console.log(`wrote ${name} (1080x1920)`);
 }
 
+// Make the app boot as the native shell (Capacitor) so the screenshots match
+// the installed app: the hamburger bar renders, and the marketing hero and
+// Quick Start are hidden so it opens on the teaching content.
+await page.addInitScript(() => {
+  window.Capacitor = { isNativePlatform: () => true };
+});
 await page.goto(url, { waitUntil: "networkidle" });
-
-// Simulate the native app (Capacitor sets this class) so the screenshots match
-// the installed app: the marketing hero and Quick Start are hidden and it opens
-// on the teaching content.
-await page.evaluate(() => document.body.classList.add("native-app"));
 
 // 1. How the Cipher Works — expand the disclosure to show the cipher math the
 //    app opens on.
