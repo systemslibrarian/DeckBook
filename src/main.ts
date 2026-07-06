@@ -153,6 +153,8 @@ type AppState = {
   presenterIndex: number;
   // Ids of expository panels currently collapsed (see COLLAPSIBLE_PANELS).
   collapsed: Set<string>;
+  // Native app only: whether the hamburger section menu is open.
+  navMenuOpen: boolean;
 };
 
 // Reference/expository panels that collapse into a one-line disclosure so the
@@ -199,10 +201,24 @@ const NAV_SECTIONS: { id: string; label: string }[] = [
 ];
 
 function renderAppNav(): string {
-  const chips = NAV_SECTIONS.map(
-    (s) => `<button type="button" class="app-nav-chip" data-jump="${s.id}">${s.label}</button>`
+  const open = state.navMenuOpen;
+  const items = NAV_SECTIONS.map(
+    (s) => `<button type="button" class="app-nav-item" data-jump="${s.id}">${s.label}</button>`
   ).join("");
-  return `<nav class="app-nav" aria-label="Jump to section"><div class="app-nav-scroll">${chips}</div></nav>`;
+  return `
+    <div class="app-nav">
+      <button type="button" class="app-nav-toggle" aria-expanded="${open}" aria-controls="app-nav-menu" aria-label="${open ? "Close section menu" : "Open section menu"}">
+        <span class="app-nav-burger" aria-hidden="true"></span>
+        Menu
+      </button>
+      <span class="app-nav-title">DeckBook</span>
+    </div>
+    ${
+      open
+        ? `<div class="app-nav-scrim" data-nav-close></div>
+           <nav id="app-nav-menu" class="app-nav-menu" aria-label="Jump to section">${items}</nav>`
+        : ""
+    }`;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,7 +384,8 @@ const state: AppState = {
   presenterMode: false,
   presenterIndex: 0,
   // Start every reference panel collapsed so the first view is short.
-  collapsed: new Set(COLLAPSIBLE_PANELS.map((panel) => panel.id))
+  collapsed: new Set(COLLAPSIBLE_PANELS.map((panel) => panel.id)),
+  navMenuOpen: false
 };
 
 if (state.deckBook.length > 0) {
@@ -450,6 +467,11 @@ if (isNativeApp) {
     let backArmed = false;
     let backTimer = 0;
     void App.addListener("backButton", () => {
+      if (state.navMenuOpen) {
+        state.navMenuOpen = false;
+        render();
+        return;
+      }
       if (state.presenterMode) {
         exitPresenter();
         return;
@@ -806,13 +828,13 @@ function finishGuide(): void {
   render();
 }
 
-// Jump to a section from the native app's nav bar: expand it first if it's a
-// collapsed reference panel, then smooth-scroll it to the top.
+// Jump to a section from the native app's hamburger menu: close the menu,
+// expand the target if it's a collapsed reference panel, then smooth-scroll it
+// to the top.
 function jumpTo(id: string): void {
-  if (state.collapsed.has(id)) {
-    state.collapsed.delete(id);
-    render();
-  }
+  state.navMenuOpen = false;
+  state.collapsed.delete(id);
+  render();
   document.querySelector(`#${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1877,10 +1899,18 @@ function exitPresenter(): void {
 }
 
 function bindEvents(): void {
-  // Native app section-jump nav (absent on web).
-  document.querySelectorAll<HTMLButtonElement>(".app-nav-chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const id = chip.dataset.jump;
+  // Native app hamburger section menu (absent on web).
+  document.querySelector<HTMLButtonElement>(".app-nav-toggle")?.addEventListener("click", () => {
+    state.navMenuOpen = !state.navMenuOpen;
+    render();
+  });
+  document.querySelector<HTMLElement>(".app-nav-scrim")?.addEventListener("click", () => {
+    state.navMenuOpen = false;
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>(".app-nav-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const id = item.dataset.jump;
       if (id) jumpTo(id);
     });
   });
