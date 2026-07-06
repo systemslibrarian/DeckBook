@@ -155,6 +155,8 @@ type AppState = {
   collapsed: Set<string>;
   // Native app only: whether the hamburger section menu is open.
   navMenuOpen: boolean;
+  // Native app only: which menu destination (APP_VIEWS key) is showing.
+  activeView: string;
 };
 
 // Reference/expository panels that collapse into a one-line disclosure so the
@@ -187,23 +189,41 @@ const PRESENTER_PANELS: { id: string; title: string }[] = [
   { id: "modern-crypto", title: "Why Modern Key Exchange Exists" }
 ];
 
-// Section jump-targets for the native app's sticky nav bar. Each id must match
-// a section rendered in the main template. Web has its full landing page and
-// doesn't show this bar.
-const NAV_SECTIONS: { id: string; label: string }[] = [
-  { id: "how-it-works", label: "How it Works" },
-  { id: "visualizer", label: "Watch It Work" },
-  { id: "generate", label: "Generate" },
-  { id: "encrypt-panel", label: "Encrypt" },
-  { id: "decrypt-panel", label: "Decrypt" },
-  { id: "attack-lab", label: "Attack Lab" },
-  { id: "challenge", label: "Challenge" }
+// The native app is a menu-driven, one-screen-at-a-time layout: each entry is
+// a destination that shows only its section(s). Every section id must match a
+// <section> rendered in the main template. Web keeps its full single-page
+// layout and shows none of this.
+const APP_VIEWS: { key: string; label: string; sections: string[] }[] = [
+  { key: "learn", label: "How it Works", sections: ["how-it-works"] },
+  { key: "visualizer", label: "Watch It Work", sections: ["visualizer"] },
+  { key: "keys", label: "Generate Keys", sections: ["generate", "key-list", "receiver-setup"] },
+  { key: "encrypt", label: "Encrypt", sections: ["encrypt-panel"] },
+  { key: "decrypt", label: "Decrypt", sections: ["decrypt-panel"] },
+  { key: "simulator", label: "Two-Party Simulator", sections: ["simulator"] },
+  { key: "attack", label: "Key Reuse Attack Lab", sections: ["attack-lab"] },
+  { key: "challenge", label: "Challenge: Eve's Intercept", sections: ["challenge"] },
+  {
+    key: "reference",
+    label: "Reference & Glossary",
+    sections: [
+      "security-model",
+      "mistakes",
+      "absurd-scale",
+      "modern-crypto",
+      "advanced-mode",
+      "about-copy",
+      "glossary",
+      "educators"
+    ]
+  }
 ];
+const DEFAULT_VIEW = "learn";
 
 function renderAppNav(): string {
   const open = state.navMenuOpen;
-  const items = NAV_SECTIONS.map(
-    (s) => `<button type="button" class="app-nav-item" data-jump="${s.id}">${s.label}</button>`
+  const items = APP_VIEWS.map(
+    (v) =>
+      `<button type="button" class="app-nav-item${v.key === state.activeView ? " is-active" : ""}" data-view="${v.key}">${v.label}</button>`
   ).join("");
   return `
     <div class="app-nav">
@@ -385,7 +405,8 @@ const state: AppState = {
   presenterIndex: 0,
   // Start every reference panel collapsed so the first view is short.
   collapsed: new Set(COLLAPSIBLE_PANELS.map((panel) => panel.id)),
-  navMenuOpen: false
+  navMenuOpen: false,
+  activeView: DEFAULT_VIEW
 };
 
 if (state.deckBook.length > 0) {
@@ -420,17 +441,22 @@ if (incomingShare) {
 
 setChallengeHooks({ confetti: confettiBurst, flash });
 
-// In the native app shell (Capacitor injects window.Capacitor), the visitor
-// deliberately installed and opened DeckBook, so the museum-style marketing
-// hero and the "Quick Start" intro are hidden and the app opens on the teaching
-// content (Guided Walkthrough → How the Cipher Works → the tool). CSS keyed off
-// this body class does the hiding; the website keeps its full landing page.
+// In the native app shell (Capacitor injects window.Capacitor) the app is a
+// menu-driven, one-screen-at-a-time layout (see APP_VIEWS / applyNativeView):
+// the marketing hero and the single-page scroll are hidden, and it opens on
+// "How the Cipher Works". The website keeps its full single-page layout.
 const capacitor = (window as unknown as {
   Capacitor?: { isNativePlatform?: () => boolean };
 }).Capacitor;
 const isNativeApp = capacitor?.isNativePlatform?.() === true;
 if (isNativeApp) {
   document.body.classList.add("native-app");
+  // Open on the relevant screen when launched from a share or challenge link.
+  if (incomingShare) {
+    state.activeView = "decrypt";
+  } else if (incomingPlay) {
+    state.activeView = "challenge";
+  }
 }
 
 // Service worker policy differs by platform:
@@ -474,6 +500,11 @@ if (isNativeApp) {
       }
       if (state.presenterMode) {
         exitPresenter();
+        return;
+      }
+      // From any other screen, Back returns to the home destination first.
+      if (state.activeView !== DEFAULT_VIEW) {
+        selectView(DEFAULT_VIEW);
         return;
       }
       if (backArmed) {
@@ -828,14 +859,28 @@ function finishGuide(): void {
   render();
 }
 
-// Jump to a section from the native app's hamburger menu: close the menu,
-// expand the target if it's a collapsed reference panel, then smooth-scroll it
-// to the top.
-function jumpTo(id: string): void {
+// Switch the native app to a menu destination: close the menu, show that view's
+// section(s) only, and scroll back to the top.
+function selectView(key: string): void {
+  state.activeView = key;
   state.navMenuOpen = false;
-  state.collapsed.delete(id);
   render();
-  document.querySelector(`#${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.querySelector("#main-content")?.scrollIntoView({ block: "start" });
+  window.scrollTo({ top: 0 });
+}
+
+// Native app only: show just the active destination's section(s); hide the rest
+// (including the marketing hero, walkthrough, and other views). Runs after every
+// render because the DOM is rebuilt each time.
+function applyNativeView(): void {
+  if (!isNativeApp) {
+    return;
+  }
+  const view = APP_VIEWS.find((v) => v.key === state.activeView) ?? APP_VIEWS[0];
+  const active = new Set(view.sections);
+  document.querySelectorAll<HTMLElement>("#main-content > section").forEach((section) => {
+    section.style.display = section.id && active.has(section.id) ? "" : "none";
+  });
 }
 
 // Resolve which decks will encrypt the current plaintext, in order. Returns
@@ -1788,8 +1833,13 @@ function render(): void {
   `;
 
   bindEvents();
-  applyCollapsibles();
+  // The native app shows one section per screen, so the reference-panel
+  // disclosures aren't used there — panels render fully expanded.
+  if (!isNativeApp) {
+    applyCollapsibles();
+  }
   applyPresenterMode();
+  applyNativeView();
 }
 
 // Turn each reference panel into a native-feeling disclosure: its <h2>
@@ -1910,8 +1960,8 @@ function bindEvents(): void {
   });
   document.querySelectorAll<HTMLButtonElement>(".app-nav-item").forEach((item) => {
     item.addEventListener("click", () => {
-      const id = item.dataset.jump;
-      if (id) jumpTo(id);
+      const key = item.dataset.view;
+      if (key) selectView(key);
     });
   });
 

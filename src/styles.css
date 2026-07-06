@@ -232,6 +232,13 @@ body.native-app .app-nav-item:active {
   background: var(--bg-alt);
 }
 
+/* Mark the destination currently on screen. */
+body.native-app .app-nav-item.is-active {
+  background: var(--bg-alt);
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Lift toasts (e.g. the "press back again to exit" hint) above the gesture
    nav bar / home indicator so they aren't hidden behind it. */
 body.native-app .toast {
