@@ -7,6 +7,10 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: "autoUpdate",
+      // Registration is done manually in main.ts so it can be skipped in the
+      // native app (Capacitor), where a service worker only causes stale
+      // content after app updates. The SW itself is still generated for the web.
+      injectRegister: false,
       includeAssets: ["apple-touch-icon.png", "og-image.png"],
       manifest: {
         name: "DeckBook — Cipher Museum",

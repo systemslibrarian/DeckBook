@@ -87,6 +87,14 @@ main.museum-shell {
   padding: 1.3rem;
 }
 
+/* In the native app (Capacitor sets body.native-app), skip the museum-style
+   marketing hero and the Quick Start intro so the app opens on the teaching
+   content. The Guided Walkthrough and everything below stay. Web is unaffected. */
+body.native-app .hero,
+body.native-app #quick-start {
+  display: none;
+}
+
 .kicker {
   margin: 0;
   color: var(--muted);

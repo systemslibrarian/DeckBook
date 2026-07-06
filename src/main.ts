@@ -383,6 +383,45 @@ if (incomingShare) {
 
 setChallengeHooks({ confetti: confettiBurst, flash });
 
+// In the native app shell (Capacitor injects window.Capacitor), the visitor
+// deliberately installed and opened DeckBook, so the museum-style marketing
+// hero and the "Quick Start" intro are hidden and the app opens on the teaching
+// content (Guided Walkthrough → How the Cipher Works → the tool). CSS keyed off
+// this body class does the hiding; the website keeps its full landing page.
+const capacitor = (window as unknown as {
+  Capacitor?: { isNativePlatform?: () => boolean };
+}).Capacitor;
+const isNativeApp = capacitor?.isNativePlatform?.() === true;
+if (isNativeApp) {
+  document.body.classList.add("native-app");
+}
+
+// Service worker policy differs by platform:
+//  - Web: register the generated SW so the site is an installable, offline PWA.
+//  - Native app: Capacitor already serves the bundled assets offline, so a SW
+//    adds nothing and only serves a stale build for one launch after each app
+//    update. Unregister any SW and clear its caches; if a stale SW is currently
+//    controlling the page, reload once (after cleanup) to load fresh assets.
+if (isNativeApp) {
+  if ("serviceWorker" in navigator) {
+    const cleanup = Promise.all([
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister()))),
+      "caches" in window
+        ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        : Promise.resolve(),
+    ]);
+    if (navigator.serviceWorker.controller) {
+      void cleanup.then(() => window.location.reload());
+    }
+  }
+} else {
+  void import("virtual:pwa-register").then(({ registerSW }) => {
+    registerSW({ immediate: true });
+  });
+}
+
 render();
 
 if (incomingShare) {
