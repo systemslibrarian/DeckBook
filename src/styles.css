@@ -573,10 +573,12 @@ button:disabled {
   letter-spacing: 0.03em;
 }
 
-/* Realistic mode: full SVG card faces, taller grid so faces stay readable. */
+/* Realistic mode: full SVG card faces. No height cap or scroll — the whole
+ * deck (all 52 cards) must be visible at once, not clipped to the first rows. */
 .deck-visual.realistic {
   grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-  max-height: 360px;
+  max-height: none;
+  overflow: visible;
   gap: 0.45rem;
 }
 
@@ -728,7 +730,8 @@ button:disabled {
 
   .deck-visual.realistic {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-height: 300px;
+    max-height: none;
+    overflow: visible;
   }
 
   .toast {
@@ -1729,6 +1732,48 @@ body.presenter .toast {
 
   .print-cards li.red {
     color: #b00000;
+  }
+
+  /* Realistic print: the actual card faces laid out in reading order, each
+   * tagged with its deck position and label so the physical deck can be
+   * built and verified card-by-card. */
+  .print-cards-real {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.45rem 0.4rem;
+  }
+
+  .print-card-real {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.12rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-card-real .card-svg {
+    width: 100%;
+    height: auto;
+  }
+
+  .print-card-real .deck-pos {
+    color: #000;
+    border-color: #000;
+    font-size: 0.7rem;
+    min-width: 0;
+  }
+
+  .print-card-real .print-card-label {
+    font-family: "Courier New", monospace;
+    font-size: 0.82rem;
+    color: #000;
+  }
+
+  .print-card-real.red .deck-pos,
+  .print-card-real.red .print-card-label {
+    color: #b00000;
+    border-color: #b00000;
   }
 
   .print-warn {

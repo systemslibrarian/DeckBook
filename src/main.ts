@@ -1462,11 +1462,26 @@ function render(): void {
                 <p><strong>Deck Key:</strong> ${escapeHtml(activeEntry.indexCode)}</p>
                 <p><strong>Fingerprint:</strong> ${escapeHtml(activeEntry.fingerprint)}</p>
                 <p>Arrange a real deck of cards in this exact order, from the top of the deck down. Verify every card. One card out of place breaks decryption.</p>
-                <ol class="print-cards">
-                  ${activeEntry.deckOrder
-                    .map((card) => `<li class="${card.suit === "HEARTS" || card.suit === "DIAMONDS" ? "red" : "black"}">${escapeHtml(card.label)}</li>`)
-                    .join("")}
-                </ol>
+                ${
+                  state.setupViewMode === "realistic"
+                    ? `<div class="print-cards-real">
+                        ${activeEntry.deckOrder
+                          .map(
+                            (card, index) =>
+                              `<div class="print-card-real ${card.suit === "HEARTS" || card.suit === "DIAMONDS" ? "red" : "black"}">
+                                <span class="deck-pos">${index + 1}</span>
+                                ${renderCardFaceSvg(card, "realistic", 72, 100)}
+                                <span class="print-card-label">${escapeHtml(card.label)}</span>
+                              </div>`
+                          )
+                          .join("")}
+                      </div>`
+                    : `<ol class="print-cards">
+                        ${activeEntry.deckOrder
+                          .map((card) => `<li class="${card.suit === "HEARTS" || card.suit === "DIAMONDS" ? "red" : "black"}">${escapeHtml(card.label)}</li>`)
+                          .join("")}
+                      </ol>`
+                }
                 <p class="print-warn">Keep this sheet secret. Anyone who photographs it holds the key. Destroy it after setup.</p>
               </div>`
             : ""
