@@ -1,0 +1,14 @@
+# DeckBook Android release signing — LOCAL TEMPLATE.
+#
+# Copy this file to android/key.properties (which is gitignored) and fill in
+# the real values. The Gradle build reads it automatically for release builds.
+# NEVER commit the real key.properties or the .jks keystore.
+
+# Absolute path to your keystore (.jks). You can point this at an existing
+# keystore or generate a dedicated one (see README → Release Signing).
+storeFile=C:\\Users\\gmcas\\keystores\\deckbook-release.jks
+
+# Passwords and the key alias inside the keystore.
+storePassword=CHANGE_ME
+keyAlias=deckbook
+keyPassword=CHANGE_ME

@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+// Release signing is driven by a gitignored android/key.properties (or, in CI,
+// by the same keys supplied as environment variables). When neither is present
+// the release build is simply left unsigned, so debug builds and contributors
+// without the keystore are unaffected.
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+def hasReleaseSigning = keystorePropertiesFile.exists() || System.getenv("DECKBOOK_KEYSTORE") != null
+
 android {
     namespace = "com.systemslibrarian.deckbook"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +27,28 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                // Local builds: read from android/key.properties.
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            } else if (System.getenv("DECKBOOK_KEYSTORE") != null) {
+                // CI builds: read from environment / decoded secret file.
+                storeFile file(System.getenv("DECKBOOK_KEYSTORE"))
+                storePassword System.getenv("DECKBOOK_STORE_PASSWORD")
+                keyAlias System.getenv("DECKBOOK_KEY_ALIAS")
+                keyPassword System.getenv("DECKBOOK_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

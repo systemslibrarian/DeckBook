@@ -269,6 +269,44 @@ push a version tag:
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
+### Release signing (Android)
+
+Debug builds (`npm run android:device`, CI's `.apk`) are signed with the
+throwaway debug key and are fine for testing. A **release** build for the Play
+Store must be signed with your own keystore. The Gradle config reads the
+keystore details from a **gitignored** `android/key.properties` — the keystore
+and its passwords are never committed.
+
+1. Generate a keystore once (or reuse an existing one):
+
+   ```bash
+   keytool -genkey -v -keystore deckbook-release.jks \
+     -alias deckbook -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+2. Copy [android/key.properties.example](android/key.properties.example) to
+   `android/key.properties` and fill in the `storeFile` path, passwords, and
+   alias.
+
+3. Build the signed release bundle:
+
+   ```bash
+   cd android && ./gradlew bundleRelease   # -> app/build/outputs/bundle/release/*.aab
+   ```
+
+For CI, the same config falls back to environment variables
+(`DECKBOOK_KEYSTORE`, `DECKBOOK_STORE_PASSWORD`, `DECKBOOK_KEY_ALIAS`,
+`DECKBOOK_KEY_PASSWORD`) so a release job can decode a base64 keystore secret
+and sign without a local `key.properties`.
+
+### One-command device redeploy
+
+With a phone attached over USB (debugging authorized), deploy the latest code:
+
+```bash
+npm run android:device   # build -> cap sync -> assembleDebug -> install -> launch
+```
+
 ## Accessibility and Mobile Notes
 
 The UI is designed to be usable on small screens and with keyboard navigation.
