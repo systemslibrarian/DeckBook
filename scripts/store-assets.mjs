@@ -91,34 +91,41 @@ await page.addInitScript(() => {
 });
 await page.goto(url, { waitUntil: "networkidle" });
 
-// 1. How the Cipher Works — expand the disclosure to show the cipher math the
-//    app opens on.
-await page.locator("#how-it-works .collapsible-toggle").click();
-await page.locator("#how-it-works").scrollIntoViewIfNeeded();
+// The native app is menu-driven (one screen per destination), so switch views
+// through the hamburger menu the way a user would.
+async function goView(key) {
+  await page.locator(".app-nav-toggle").click();
+  await page.locator(`.app-nav-item[data-view="${key}"]`).click();
+  await page.waitForTimeout(250);
+}
+
+// 1. How the Cipher Works — the default screen.
 await shot("screenshot-1-how-it-works.png");
 
 // 2. Watch It Work — step a few letters so a card is face-up.
+await goView("visualizer");
 await page.locator("#viz-input").fill("THE DECK IS THE KEY");
 for (let i = 0; i < 4; i += 1) await page.locator("#viz-step").click();
-await page.locator("#visualizer").scrollIntoViewIfNeeded();
 await shot("screenshot-2-visualizer.png");
 
-// 3. Key Reuse Attack Lab — two messages under one key, crib dragged.
+// 3. Key Reuse Attack Lab — generate keys first (Generate screen), then run the
+//    attack with two messages under one key.
+await goView("keys");
 await page.locator("#generate-book").click();
 await page.locator(".key-card").first().waitFor();
+await goView("attack");
 await page.locator("#lab-a").fill("ATTACKATDAWNFROMTHEEAST");
 await page.locator("#lab-b").fill("DEFENDTHEWESTGATEATNOON");
 const key = await page.locator("#lab-key option").nth(1).getAttribute("value");
 await page.selectOption("#lab-key", key);
 await page.locator("#lab-run").click();
 await page.locator("#crib-word").fill("THE");
-await page.locator("#attack-lab").scrollIntoViewIfNeeded();
 await shot("screenshot-3-attack-lab.png");
 
 // 4. Challenge — crib + partial guess showing the reveal.
+await goView("challenge");
 await page.locator("#chal-crib").fill("THE");
 await page.locator("#chal-guess-a").fill("MEETAT");
-await page.locator("#challenge").scrollIntoViewIfNeeded();
 await shot("screenshot-4-challenge.png");
 
 await browser.close();
