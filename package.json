@@ -11,6 +11,7 @@
     "icons": "node scripts/generate-icons.mjs",
     "icons:native": "node scripts/generate-native-icons.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
+    "store:assets": "node scripts/store-assets.mjs",
     "cap:sync": "npm run build && cap sync",
     "cap:android": "npm run build && cap sync android && cap open android",
     "cap:ios": "npm run build && cap sync ios && cap open ios",
