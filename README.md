@@ -86,6 +86,37 @@ Both sides must already hold the same private DeckBook. Only the index
 code (a public label like `LANTERN-42`) and the ciphertext travel over
 the public channel. The deck order itself is the secret.
 
+## How Keys Are Generated (and Why They're Random)
+
+The deck order *is* the key, so it has to be genuinely unpredictable.
+Generation is the part of DeckBook that is truly cryptographic-grade,
+even though the card cipher around it is deliberately educational. Four
+things guarantee the randomness (all in [src/cipher.ts](src/cipher.ts)):
+
+1. **A real cryptographic source.** Every random number comes from the
+   Web Crypto CSPRNG, `crypto.getRandomValues()`, seeded by the operating
+   system's entropy. The predictable `Math.random()` is never used.
+2. **No modulo bias.** `secureRandomInt` draws integers with *rejection
+   sampling*: a naive `randomUint32 % 52` is skewed because 2³² is not a
+   multiple of 52, so it discards the "leftover" high values and only
+   accepts from an exact multiple. Every value `0…max-1` is then exactly
+   equally likely.
+3. **A provably-fair shuffle.** `secureShuffle` is a Fisher–Yates shuffle
+   driven by `secureRandomInt`. Given an unbiased RNG, all `52!` orderings
+   are equally probable — it avoids the common "swap with any position"
+   bug that skews the distribution.
+4. **Independent keys.** `generateDeckBook` shuffles a fresh
+   `createStandardDeck()` for every entry, so no two keys share a seed or
+   state, and each gets a SHA-256 fingerprint so sender and receiver can
+   confirm they hold the same deck order.
+
+That's roughly `8.06 × 10⁶⁷` (= `52!`) possible deck orders. The
+randomness is genuinely strong — as strong as your device's CSPRNG. What
+keeps DeckBook educational rather than production-grade is not the
+randomness but the rest of the protocol: you still have to share the deck
+secretly and never reuse a key. The same explanation is available in-app
+under **Generate DeckBook → "How are these decks made truly random?"**.
+
 ## Feature Highlights
 
 ### Interactive learning

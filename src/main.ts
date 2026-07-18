@@ -1602,6 +1602,19 @@ function render(): void {
         <p class="mini-warning">Keep this DeckBook secret. Anyone with the DeckBook can decrypt messages encrypted with it.</p>
         <p class="counts">Total deck keys: ${summary.total} | Unused: ${summary.unused} | Used: ${summary.used}</p>
         <p class="storage-note">Browser storage is not a secure vault. This local save is for demo convenience only.</p>
+        <details class="collapsible">
+          <summary>How are these decks made truly random?</summary>
+          <div class="collapsible-body">
+            <p>Each deck order is what makes the key, so it has to be genuinely unpredictable. Here's what's under the hood:</p>
+            <ul>
+              <li><strong>A real cryptographic source.</strong> Every random number comes from your device's <span class="mono">crypto.getRandomValues()</span> — the browser's cryptographically-secure generator, seeded by the operating system. The predictable <span class="mono">Math.random()</span> is never used.</li>
+              <li><strong>No hidden bias.</strong> Random numbers are drawn with rejection sampling, which discards the "leftover" values that would otherwise make some cards slightly more likely — so every position is exactly equally probable.</li>
+              <li><strong>A provably-fair shuffle.</strong> The 52 cards are ordered with the Fisher–Yates algorithm, under which all <span class="mono">52!</span> possible orders are equally likely.</li>
+              <li><strong>Independent keys.</strong> Every key in the book is shuffled separately — no two share a seed or state — and each gets a SHA-256 fingerprint so you and your receiver can confirm you hold the same deck.</li>
+            </ul>
+            <p>That's about <span class="mono">8.06 × 10⁶⁷</span> possible deck orders. The randomness here is genuinely strong — it's the <em>rest</em> of the protocol (sharing the deck secretly, never reusing a key) that keeps DeckBook educational rather than production-grade.</p>
+          </div>
+        </details>
       </section>
 
       <section class="panel" id="key-list">
