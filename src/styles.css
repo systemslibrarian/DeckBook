@@ -45,12 +45,19 @@
   top: 0.6rem;
 }
 
+/* On mobile the viewport scroller is usually <html>, so the horizontal-scroll
+   guard has to live here too — clipping only <body> lets the page still pan.
+   clip (not hidden) keeps <html> from becoming a scroll container that would
+   break the sticky "Next: Encrypt" CTA. */
+html {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  /* Never allow the page to scroll sideways; content that's too wide should
-     wrap, not push the viewport. Use clip (not hidden) so it doesn't turn the
-     body into a scroll container and break the sticky "Next: Encrypt" CTA. */
+  max-width: 100%;
   overflow-x: clip;
   font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
   color: var(--text);
@@ -510,10 +517,49 @@ button:disabled {
 
 .steps-container {
   margin-top: 0.7rem;
+}
+
+/* Collapsible live previews on the Encrypt screen. Closed by default so the
+   screen stays clean; the summary is a clear tap target to reveal each one. */
+.collapsible {
+  margin-top: 0.7rem;
   border: 1px dashed #6a5630;
   border-radius: 10px;
   background: #15120e;
-  padding: 0.5rem;
+  overflow: hidden;
+}
+
+.collapsible > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.7rem 0.8rem;
+  font-weight: 700;
+  color: #f3d58e;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron that rotates when the section opens. */
+.collapsible > summary::before {
+  content: "▸";
+  color: var(--accent);
+  transition: transform 150ms ease;
+}
+
+.collapsible[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* The wide 7-column math table scrolls inside its own box instead of pushing
+   the whole page sideways. */
+.collapsible-body {
+  padding: 0 0.7rem 0.7rem;
+  overflow-x: auto;
 }
 
 .steps-hint {

@@ -141,6 +141,8 @@ type AppState = {
   keyListPage: number;
   keyListPageSize: number;
   hideUsedKeys: boolean;
+  showEncryptSteps: boolean;
+  showFingerprints: boolean;
   setupViewMode: SetupViewMode;
   walkthroughStep: number;
   walkthroughActive: boolean;
@@ -393,6 +395,8 @@ const state: AppState = {
   keyListPage: 1,
   keyListPageSize: 24,
   hideUsedKeys: false,
+  showEncryptSteps: false,
+  showFingerprints: false,
   setupViewMode: initialSetupViewMode,
   walkthroughStep: 0,
   walkthroughActive: !initialGuideDismissed,
@@ -1019,7 +1023,7 @@ function renderFrequencyChart(title: string, counts: number[], ghostPercent?: nu
 function renderFrequencyHtml(): string {
   const { plain, cipher } = computeLiveCipher();
   if (cipher.length === 0) {
-    return "";
+    return `<p class="steps-hint">Type a message and pick a key to see the letter-frequency shapes.</p>`;
   }
   const note =
     plain.length < 20
@@ -1027,7 +1031,6 @@ function renderFrequencyHtml(): string {
       : "";
   return `
     <div class="freq-wrap">
-      <h3 class="freq-title">Letter fingerprints</h3>
       <p class="freq-intro">English has a spiky letter pattern (ghost bars = typical English). A good keystream flattens it: the ciphertext should show no favorite letters — nothing for a codebreaker to grab.</p>
       <div class="freq-charts">
         ${renderFrequencyChart("Your plaintext", letterFrequencies(plain), ENGLISH_FREQUENCY_PERCENT)}
@@ -1041,7 +1044,18 @@ function renderFrequencyHtml(): string {
 // the frequency charts. Re-rendered on every keystroke without touching the
 // textarea (see the encrypt-input listener).
 function renderEncryptLiveHtml(): string {
-  return renderEncryptStepsHtml() + renderFrequencyHtml();
+  // Both live previews are collapsible so they don't clutter the screen. Their
+  // open/closed state lives in `state` (see the toggle listener in bindEvents)
+  // so it survives the per-keystroke repaint of this container.
+  return `
+    <details class="collapsible" data-collapse="steps" ${state.showEncryptSteps ? "open" : ""}>
+      <summary>Show the math: how each letter becomes cipher</summary>
+      <div class="collapsible-body">${renderEncryptStepsHtml()}</div>
+    </details>
+    <details class="collapsible" data-collapse="fingerprints" ${state.showFingerprints ? "open" : ""}>
+      <summary>Show letter fingerprints (frequency shapes)</summary>
+      <div class="collapsible-body">${renderFrequencyHtml()}</div>
+    </details>`;
 }
 
 // Repaint only the live encrypt preview in place, leaving the textarea and
@@ -2366,6 +2380,26 @@ function bindEvents(): void {
     repaintEncryptSteps();
   });
 
+  // Remember whether each collapsible live-preview is open. The `toggle` event
+  // doesn't bubble, so listen on the persistent container in the capture phase;
+  // storing the state keeps it open across per-keystroke repaints.
+  const encryptSteps = document.querySelector<HTMLDivElement>("#encrypt-steps");
+  encryptSteps?.addEventListener(
+    "toggle",
+    (event) => {
+      const details = event.target;
+      if (!(details instanceof HTMLDetailsElement)) {
+        return;
+      }
+      if (details.dataset.collapse === "steps") {
+        state.showEncryptSteps = details.open;
+      } else if (details.dataset.collapse === "fingerprints") {
+        state.showFingerprints = details.open;
+      }
+    },
+    true
+  );
+
   const advancedToggle = document.querySelector<HTMLInputElement>("#advanced-mode-toggle");
   advancedToggle?.addEventListener("change", (event) => {
     state.advancedMode = (event.currentTarget as HTMLInputElement).checked;
@@ -2449,8 +2483,10 @@ function bindEvents(): void {
       };
       state.decryptIndexCode = key.indexCode;
       state.decryptCiphertext = groupedFive(ciphertext);
-      flash("Message encrypted. Share index code + ciphertext, never deck order.");
+      // No success toast — the output (ciphertext + QR + share link) now
+      // appears below; bring it into view instead of popping a message.
       render();
+      document.querySelector(".output")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
@@ -2477,8 +2513,8 @@ function bindEvents(): void {
     };
     state.decryptIndexCode = usedCodes.join(", ");
     state.decryptCiphertext = groupedFive(ciphertextRaw);
-    flash("Advanced encryption complete. Share index code list + ciphertext, never deck orders.");
     render();
+    document.querySelector(".output")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   const markEncryptUsed = document.querySelector<HTMLButtonElement>("#mark-encrypt-used");
