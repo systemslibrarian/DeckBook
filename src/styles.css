@@ -728,6 +728,41 @@ button:disabled {
   font-weight: 700;
 }
 
+/* Sticky-ish call to action under the key grid: once a key is picked, give a
+   clear path to the Encrypt step instead of leaving the user hunting. */
+.next-step-cta {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--ok);
+  border-radius: 12px;
+  background: #14170f;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.next-step-summary {
+  margin: 0;
+  color: #bff0cb;
+}
+
+.cta-button {
+  background: var(--ok);
+  border: 1px solid var(--ok);
+  color: #0d2413;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.cta-button:active {
+  filter: brightness(0.92);
+}
+
 .setup-labels {
   margin-top: 0.7rem;
   display: flex;

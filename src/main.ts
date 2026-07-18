@@ -1359,9 +1359,11 @@ function render(): void {
                   <button type="button" class="select-key-btn${isSelected ? " is-selected" : ""}" data-action="select-key" data-code="${escapeHtml(entry.indexCode)}" ${
                     isUsed ? "disabled" : ""
                   } aria-pressed="${isSelected}" aria-label="${
-                    isSelected ? "Selected" : "Use"
-                  } ${escapeHtml(entry.indexCode)} for encryption">${
-                    isSelected ? "✓ Selected for Encryption" : "Use for Encryption"
+                    isSelected
+                      ? `${escapeHtml(entry.indexCode)} selected for encryption. Tap to unselect.`
+                      : `Use ${escapeHtml(entry.indexCode)} for encryption`
+                  }">${
+                    isSelected ? "✓ Selected — Tap to Unselect" : "Use for Encryption"
                   }</button>
                   <button type="button" data-action="mark-used" data-code="${escapeHtml(entry.indexCode)}" ${
                     isUsed ? "disabled" : ""
@@ -1557,7 +1559,9 @@ function render(): void {
         <h2 class="step-heading"><span class="step-chip" aria-hidden="true">2</span>Deck Key List</h2>
         <div class="pager">
           <p class="counts">Showing ${summary.total === 0 ? 0 : pageStart + 1}-${Math.min(pageEnd, summary.total)} of ${summary.total}</p>
-          <div class="pager-controls">
+          ${
+            totalPages > 1
+              ? `<div class="pager-controls">
             <button type="button" id="page-first" ${state.keyListPage <= 1 ? "disabled" : ""}>First</button>
             <button type="button" id="page-prev" ${state.keyListPage <= 1 ? "disabled" : ""}>Prev</button>
             <span class="status-badge" aria-label="Current key page">Page ${state.keyListPage} / ${totalPages}</span>
@@ -1571,9 +1575,21 @@ function render(): void {
               <option value="60" ${state.keyListPageSize === 60 ? "selected" : ""}>60</option>
               <option value="120" ${state.keyListPageSize === 120 ? "selected" : ""}>120</option>
             </select>
-          </div>
+          </div>`
+              : ""
+          }
         </div>
         <div class="key-grid">${keyCards}</div>
+        ${
+          selectedValidMultiKeys.length > 0
+            ? `<div class="next-step-cta">
+                 <p class="next-step-summary">✓ ${selectedValidMultiKeys.length} key${
+                   selectedValidMultiKeys.length === 1 ? "" : "s"
+                 } selected: <strong>${escapeHtml(selectedValidMultiKeys.map((entry) => entry.indexCode).join(", "))}</strong></p>
+                 <button type="button" id="go-to-encrypt" class="cta-button">Next: Encrypt →</button>
+               </div>`
+            : ""
+        }
       </section>
 
       <section class="panel" id="receiver-setup">
@@ -2193,13 +2209,32 @@ function bindEvents(): void {
       if (!code) {
         return;
       }
-      state.selectedEncryptCode = code;
-      if (!state.selectedEncryptCodes.includes(code)) {
+      // Toggle: a second tap on a selected key unselects it so you can pick a
+      // different deck. Stay on the key list — the "Next: Encrypt" link below
+      // the grid takes you to the next step when you're ready.
+      if (state.selectedEncryptCodes.includes(code)) {
+        state.selectedEncryptCodes = state.selectedEncryptCodes.filter((entryCode) => entryCode !== code);
+        if (state.selectedEncryptCode === code) {
+          state.selectedEncryptCode = state.selectedEncryptCodes[0] ?? "";
+        }
+        flash(`${code} unselected.`);
+      } else {
         state.selectedEncryptCodes = [...state.selectedEncryptCodes, code];
+        state.selectedEncryptCode = code;
+        flash(`${code} selected for encryption.`);
       }
       render();
-      document.querySelector("#encrypt-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  });
+
+  // "Next: Encrypt" link under the key grid: go to the Encrypt step once a key
+  // is selected. Native switches view; web scrolls to the encrypt panel.
+  document.querySelector<HTMLButtonElement>("#go-to-encrypt")?.addEventListener("click", () => {
+    if (isNativeApp) {
+      selectView("encrypt");
+    } else {
+      document.querySelector("#encrypt-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   });
 
   document.querySelectorAll<HTMLButtonElement>("button[data-action='mark-used']").forEach((button) => {
