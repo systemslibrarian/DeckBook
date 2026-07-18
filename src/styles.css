@@ -730,12 +730,18 @@ button:disabled {
 
 /* Sticky-ish call to action under the key grid: once a key is picked, give a
    clear path to the Encrypt step instead of leaving the user hunting. */
+/* Stick the CTA to the bottom of the screen so it's visible the moment you
+   select a deck, even if the tapped card was near the top of a long list. */
 .next-step-cta {
+  position: sticky;
+  bottom: calc(0.6rem + env(safe-area-inset-bottom));
+  z-index: 6;
   margin-top: 1rem;
   padding: 0.9rem 1rem;
   border: 1px solid var(--ok);
   border-radius: 12px;
   background: #14170f;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 55%), 0 0 0 1px var(--ok);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
