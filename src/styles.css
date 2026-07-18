@@ -48,6 +48,10 @@
 body {
   margin: 0;
   min-height: 100vh;
+  /* Never allow the page to scroll sideways; content that's too wide should
+     wrap, not push the viewport. Use clip (not hidden) so it doesn't turn the
+     body into a scroll container and break the sticky "Next: Encrypt" CTA. */
+  overflow-x: clip;
   font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
   color: var(--text);
   background:
@@ -956,6 +960,19 @@ button:disabled {
   border: 1px solid #71552a;
   border-radius: 10px;
   padding: 0.65rem;
+}
+
+/* Ciphertext and normalized plaintext are long unbroken A-Z strings; without
+   this they run off the side and let the screen scroll horizontally. */
+.output p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Space between a field label and its input so the label doesn't crowd the box. */
+.field-label {
+  display: block;
+  margin-bottom: 0.4rem;
 }
 
 #encrypt-keys-multi {

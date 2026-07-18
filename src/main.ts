@@ -1719,8 +1719,13 @@ function render(): void {
       <section class="panel" id="encrypt-panel">
         <h2 class="step-heading"><span class="step-chip" aria-hidden="true">4</span>Encrypt</h2>
         <p>Spaces and punctuation are removed for this educational A-Z cipher.</p>
-        <label for="encrypt-input">Plaintext message</label>
+        <label class="field-label" for="encrypt-input">Plaintext message</label>
         <textarea id="encrypt-input" rows="4" placeholder="Enter plaintext message">${escapeHtml(state.encryptInput)}</textarea>
+
+        <div class="button-row">
+          <button type="button" id="encrypt-button" ${unusedEntries.length > 0 ? "" : "disabled"}>Encrypt</button>
+          <button type="button" id="mark-encrypt-used" ${state.encryptOutput ? "" : "disabled"}>Mark output key(s) as USED</button>
+        </div>
 
         <div class="control-row">
           <label for="advanced-mode-toggle">Advanced multi-deck mode</label>
@@ -1749,11 +1754,6 @@ function render(): void {
         }
 
         <div id="encrypt-steps" class="steps-container" aria-live="polite">${renderEncryptLiveHtml()}</div>
-
-        <div class="button-row">
-          <button type="button" id="encrypt-button" ${unusedEntries.length > 0 ? "" : "disabled"}>Encrypt</button>
-          <button type="button" id="mark-encrypt-used" ${state.encryptOutput ? "" : "disabled"}>Mark output key(s) as USED</button>
-        </div>
         ${
           state.encryptOutput
             ? `<div class="output">
