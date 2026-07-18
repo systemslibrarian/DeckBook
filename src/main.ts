@@ -1043,11 +1043,35 @@ function renderFrequencyHtml(): string {
 // Everything inside the live #encrypt-steps container: per-letter math plus
 // the frequency charts. Re-rendered on every keystroke without touching the
 // textarea (see the encrypt-input listener).
+// Plain-English "how many keys will this message need" line, updated live as
+// you type. One deck key covers 52 letters; longer messages consume more keys
+// in sequence, and the Encrypt button now assembles them automatically.
+function encryptCapacityNote(): string {
+  const length = normalizeAZ(state.encryptInput).length;
+  if (length === 0) {
+    return "";
+  }
+  const needed = requiredDeckCount(length);
+  const availableUnused = state.deckBook.filter((entry) => entry.status === "UNUSED").length;
+  if (needed === 1) {
+    return `<p class="capacity-note">${length} letter${
+      length === 1 ? "" : "s"
+    } — fits in <strong>1 deck key</strong> (each key covers ${LETTERS_PER_DECK} letters).</p>`;
+  }
+  const short = availableUnused < needed;
+  return `<p class="capacity-note${short ? " capacity-short" : ""}">${length} letters — longer than one deck (${LETTERS_PER_DECK} letters each), so it needs <strong>${needed} deck keys</strong> used in sequence.${
+    short
+      ? ` You only have ${availableUnused} unused — generate more.`
+      : " Encrypt picks and combines them automatically; both index codes travel in the QR/share link, and both keys must be marked USED afterward."
+  }</p>`;
+}
+
 function renderEncryptLiveHtml(): string {
   // Both live previews are collapsible so they don't clutter the screen. Their
   // open/closed state lives in `state` (see the toggle listener in bindEvents)
   // so it survives the per-keystroke repaint of this container.
   return `
+    ${encryptCapacityNote()}
     <details class="collapsible" data-collapse="steps" ${state.showEncryptSteps ? "open" : ""}>
       <summary>Show the math: how each letter becomes cipher</summary>
       <div class="collapsible-body">${renderEncryptStepsHtml()}</div>
@@ -2466,59 +2490,54 @@ function bindEvents(): void {
       return;
     }
 
-    if (!state.advancedMode) {
-      if (normalized.length > LETTERS_PER_DECK) {
-        flash(
-          `This message is too long for one deck key. A 52-card deck key produces ${LETTERS_PER_DECK} letters of keystream. Use additional deck keys or shorten the message. Reusing the same deck key is not allowed.`
-        );
-        render();
-        return;
-      }
+    // One key covers 52 letters; longer messages need more keys in sequence.
+    const required = requiredDeckCount(normalized.length);
 
-      const key = state.deckBook.find((entry) => entry.indexCode === state.selectedEncryptCode);
-      if (!key) {
-        flash("Select an unused deck key for encryption.");
-        render();
-        return;
+    // Start from what the user picked (unused only), then top up automatically
+    // with more unused keys so a long message never leaves them stuck hunting
+    // for how to add keys. This makes "advanced multi-deck mode" just happen.
+    const preferred = state.advancedMode
+      ? state.selectedEncryptCodes
+      : state.selectedEncryptCode
+        ? [state.selectedEncryptCode]
+        : [];
+    const keysToUse = findUnusedEntriesByCodes(preferred);
+    if (keysToUse.length < required) {
+      const already = new Set(keysToUse.map((entry) => entry.indexCode));
+      for (const entry of state.deckBook) {
+        if (keysToUse.length >= required) {
+          break;
+        }
+        if (entry.status === "UNUSED" && !already.has(entry.indexCode)) {
+          keysToUse.push(entry);
+          already.add(entry.indexCode);
+        }
       }
-
-      if (key.status === "USED") {
-        flash("Selected key is already USED. Choose an UNUSED key.");
-        render();
-        return;
-      }
-
-      const ciphertext = encryptText(normalized, key.deckOrder);
-      state.encryptOutput = {
-        indexCodes: [key.indexCode],
-        ciphertext: groupedFive(ciphertext),
-        normalizedPlaintext: normalized
-      };
-      state.decryptIndexCode = key.indexCode;
-      state.decryptCiphertext = groupedFive(ciphertext);
-      // No success toast — the output (ciphertext + QR + share link) now
-      // appears below; bring it into view instead of popping a message.
-      render();
-      document.querySelector(".output")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
     }
 
-    const needed = requiredDeckCount(normalized.length);
-    const selectedEntries = findUnusedEntriesByCodes(state.selectedEncryptCodes);
-
-    if (selectedEntries.length < needed) {
-      flash(`Need ${needed} UNUSED deck keys for this message length. Select additional keys in Advanced mode.`);
+    if (keysToUse.length < required) {
+      const availableUnused = state.deckBook.filter((entry) => entry.status === "UNUSED").length;
+      flash(
+        `This message is ${normalized.length} letters. One deck key covers ${LETTERS_PER_DECK}, so it needs ${required} keys — but only ${availableUnused} unused ${
+          availableUnused === 1 ? "key is" : "keys are"
+        } available. Generate more keys or shorten the message.`
+      );
       render();
       return;
     }
 
-    const keysToUse = selectedEntries.slice(0, needed);
+    const decks = keysToUse.slice(0, required);
+    const usedCodes = decks.map((entry) => entry.indexCode);
     const ciphertextRaw = encryptWithDecks(
       normalized,
-      keysToUse.map((entry) => entry.deckOrder)
+      decks.map((entry) => entry.deckOrder)
     );
 
-    const usedCodes = keysToUse.map((entry) => entry.indexCode);
+    // Reflect the keys actually used, and turn on advanced mode when the
+    // message genuinely spanned more than one deck so the UI matches reality.
+    state.advancedMode = required > 1;
+    state.selectedEncryptCodes = usedCodes;
+    state.selectedEncryptCode = usedCodes[0];
     state.encryptOutput = {
       indexCodes: usedCodes,
       ciphertext: groupedFive(ciphertextRaw),
@@ -2526,6 +2545,8 @@ function bindEvents(): void {
     };
     state.decryptIndexCode = usedCodes.join(", ");
     state.decryptCiphertext = groupedFive(ciphertextRaw);
+    // No success toast — the output (ciphertext + QR + share link) appears
+    // below; bring it into view instead of popping a message.
     render();
     document.querySelector(".output")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });

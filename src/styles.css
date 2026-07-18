@@ -1021,6 +1021,21 @@ button:disabled {
   margin-bottom: 0.4rem;
 }
 
+/* Live "how many keys this message needs" line on the Encrypt screen. */
+.capacity-note {
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--accent);
+  background: rgb(228 186 88 / 8%);
+  border-radius: 0 8px 8px 0;
+  color: var(--text);
+}
+
+.capacity-note.capacity-short {
+  border-left-color: var(--danger);
+  background: rgb(225 107 107 / 10%);
+}
+
 /* Prominent "mark used" action in the encrypt output, plus its confirmed state. */
 .mark-used-cta {
   margin-top: 0.6rem;
