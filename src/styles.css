@@ -754,19 +754,41 @@ button:disabled {
   color: #bff0cb;
 }
 
+/* The primary action stands apart from the green banner by using the gold
+   accent, larger type, and a glow so it clearly reads as "do this next". */
 .cta-button {
-  background: var(--ok);
-  border: 1px solid var(--ok);
-  color: #0d2413;
-  font-weight: 700;
-  font-size: 1.05rem;
-  padding: 0.7rem 1.2rem;
+  background: var(--accent);
+  border: 2px solid #f6d88d;
+  color: #241800;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+  padding: 0.85rem 1.5rem;
   border-radius: 10px;
   cursor: pointer;
+  box-shadow: 0 0 0 3px rgb(228 186 88 / 25%), 0 6px 16px rgb(228 186 88 / 30%);
+  animation: cta-pulse 1.8s ease-in-out infinite;
 }
 
 .cta-button:active {
   filter: brightness(0.92);
+}
+
+/* A gentle pulse to draw the eye to the next step without being obnoxious. */
+@keyframes cta-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgb(228 186 88 / 22%), 0 6px 16px rgb(228 186 88 / 28%);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(228 186 88 / 30%), 0 6px 20px rgb(228 186 88 / 45%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-button {
+    animation: none;
+  }
 }
 
 .cta-actions {
