@@ -140,6 +140,7 @@ type AppState = {
   checklist: Record<string, boolean[]>;
   keyListPage: number;
   keyListPageSize: number;
+  hideUsedKeys: boolean;
   setupViewMode: SetupViewMode;
   walkthroughStep: number;
   walkthroughActive: boolean;
@@ -391,6 +392,7 @@ const state: AppState = {
   checklist: {},
   keyListPage: 1,
   keyListPageSize: 24,
+  hideUsedKeys: false,
   setupViewMode: initialSetupViewMode,
   walkthroughStep: 0,
   walkthroughActive: !initialGuideDismissed,
@@ -1324,17 +1326,26 @@ function render(): void {
     )
     .join("");
 
-  clampPage(state.deckBook.length);
+  // "Hide used decks" filters the list you page through, so a large book of
+  // mostly-spent keys collapses to just the ones you can still use.
+  const listedKeys = state.hideUsedKeys
+    ? state.deckBook.filter((entry) => entry.status !== "USED")
+    : state.deckBook;
+  const hiddenUsedCount = state.deckBook.length - listedKeys.length;
 
-  const totalPages = Math.max(1, Math.ceil(state.deckBook.length / state.keyListPageSize));
+  clampPage(listedKeys.length);
+
+  const totalPages = Math.max(1, Math.ceil(listedKeys.length / state.keyListPageSize));
   const pageStart = (state.keyListPage - 1) * state.keyListPageSize;
   const pageEnd = pageStart + state.keyListPageSize;
-  const visibleKeys = state.deckBook.slice(pageStart, pageEnd);
+  const visibleKeys = listedKeys.slice(pageStart, pageEnd);
 
   const keyCards =
     state.deckBook.length === 0
       ? `<p class="empty">Generate a DeckBook to list your one-time deck keys.</p>`
-      : visibleKeys
+      : listedKeys.length === 0
+        ? `<p class="empty">All ${summary.total} deck keys are used. Uncheck "Hide used decks" to see them.</p>`
+        : visibleKeys
           .map((entry) => {
             const isUsed = entry.status === "USED";
             const isSelected = !isUsed && state.selectedEncryptCodes.includes(entry.indexCode);
@@ -1557,8 +1568,18 @@ function render(): void {
 
       <section class="panel" id="key-list">
         <h2 class="step-heading"><span class="step-chip" aria-hidden="true">2</span>Deck Key List</h2>
+        <div class="key-list-tools">
+          <label class="hide-used-toggle">
+            <input type="checkbox" id="hide-used" ${state.hideUsedKeys ? "checked" : ""} ${
+              summary.used === 0 ? "disabled" : ""
+            } />
+            <span>Hide used decks${summary.used > 0 ? ` (${summary.used} used)` : ""}</span>
+          </label>
+        </div>
         <div class="pager">
-          <p class="counts">Showing ${summary.total === 0 ? 0 : pageStart + 1}-${Math.min(pageEnd, summary.total)} of ${summary.total}</p>
+          <p class="counts">Showing ${listedKeys.length === 0 ? 0 : pageStart + 1}-${Math.min(pageEnd, listedKeys.length)} of ${listedKeys.length}${
+            hiddenUsedCount > 0 ? ` (${hiddenUsedCount} used hidden)` : ""
+          }</p>
           ${
             totalPages > 1
               ? `<div class="pager-controls">
@@ -1583,10 +1604,15 @@ function render(): void {
         ${
           selectedValidMultiKeys.length > 0
             ? `<div class="next-step-cta">
-                 <p class="next-step-summary">✓ ${selectedValidMultiKeys.length} key${
-                   selectedValidMultiKeys.length === 1 ? "" : "s"
-                 } selected: <strong>${escapeHtml(selectedValidMultiKeys.map((entry) => entry.indexCode).join(", "))}</strong></p>
-                 <button type="button" id="go-to-encrypt" class="cta-button">Next: Encrypt →</button>
+                 <p class="next-step-summary">✓ Selected: <strong>${escapeHtml(
+                   selectedValidMultiKeys[0].indexCode
+                 )}</strong></p>
+                 <div class="cta-actions">
+                   <button type="button" id="go-to-encrypt" class="cta-button">Next: Encrypt →</button>
+                   <button type="button" id="cta-mark-used" data-code="${escapeHtml(
+                     selectedValidMultiKeys[0].indexCode
+                   )}" class="cta-secondary">Mark Used</button>
+                 </div>
                </div>`
             : ""
         }
@@ -2177,13 +2203,23 @@ function bindEvents(): void {
 
   const pageLast = document.querySelector<HTMLButtonElement>("#page-last");
   pageLast?.addEventListener("click", () => {
-    state.keyListPage = Math.max(1, Math.ceil(state.deckBook.length / state.keyListPageSize));
+    const listedCount = state.hideUsedKeys
+      ? state.deckBook.filter((entry) => entry.status !== "USED").length
+      : state.deckBook.length;
+    state.keyListPage = Math.max(1, Math.ceil(listedCount / state.keyListPageSize));
     render();
   });
 
   const pageSize = document.querySelector<HTMLSelectElement>("#page-size");
   pageSize?.addEventListener("change", (event) => {
     state.keyListPageSize = Number((event.currentTarget as HTMLSelectElement).value);
+    state.keyListPage = 1;
+    render();
+  });
+
+  const hideUsed = document.querySelector<HTMLInputElement>("#hide-used");
+  hideUsed?.addEventListener("change", (event) => {
+    state.hideUsedKeys = (event.currentTarget as HTMLInputElement).checked;
     state.keyListPage = 1;
     render();
   });
@@ -2209,18 +2245,17 @@ function bindEvents(): void {
       if (!code) {
         return;
       }
-      // Toggle: a second tap on a selected key unselects it so you can pick a
-      // different deck. Stay on the key list — the "Next: Encrypt" link below
-      // the grid takes you to the next step when you're ready.
-      if (state.selectedEncryptCodes.includes(code)) {
-        state.selectedEncryptCodes = state.selectedEncryptCodes.filter((entryCode) => entryCode !== code);
-        if (state.selectedEncryptCode === code) {
-          state.selectedEncryptCode = state.selectedEncryptCodes[0] ?? "";
-        }
+      // Single-select: only one deck can be armed for encryption at a time.
+      // Tapping the already-selected deck unselects it; tapping a different
+      // deck replaces the selection. Stay on the key list — the "Next:
+      // Encrypt" link below the grid takes you to the next step.
+      if (state.selectedEncryptCode === code) {
+        state.selectedEncryptCode = "";
+        state.selectedEncryptCodes = [];
         flash(`${code} unselected.`);
       } else {
-        state.selectedEncryptCodes = [...state.selectedEncryptCodes, code];
         state.selectedEncryptCode = code;
+        state.selectedEncryptCodes = [code];
         flash(`${code} selected for encryption.`);
       }
       render();
@@ -2235,6 +2270,20 @@ function bindEvents(): void {
     } else {
       document.querySelector("#encrypt-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  });
+
+  // Mark-used shortcut in the selection CTA: spend the selected deck and clear
+  // the selection so the CTA reflects that this key is now off the board.
+  document.querySelector<HTMLButtonElement>("#cta-mark-used")?.addEventListener("click", (event) => {
+    const code = (event.currentTarget as HTMLButtonElement).dataset.code;
+    if (!code) {
+      return;
+    }
+    markKeyStatus(code, "USED");
+    state.selectedEncryptCode = "";
+    state.selectedEncryptCodes = [];
+    flash(`${code} marked as USED.`);
+    render();
   });
 
   document.querySelectorAll<HTMLButtonElement>("button[data-action='mark-used']").forEach((button) => {

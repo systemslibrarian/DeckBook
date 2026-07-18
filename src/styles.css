@@ -763,6 +763,52 @@ button:disabled {
   filter: brightness(0.92);
 }
 
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.cta-secondary {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  font-weight: 600;
+  padding: 0.7rem 1.1rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.cta-secondary:active {
+  background: var(--bg-alt);
+}
+
+/* Key-list controls row (hide-used toggle). */
+.key-list-tools {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.hide-used-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hide-used-toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+.hide-used-toggle input:disabled {
+  cursor: default;
+}
+
 .setup-labels {
   margin-top: 0.7rem;
   display: flex;
