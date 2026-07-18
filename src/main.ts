@@ -197,7 +197,7 @@ const PRESENTER_PANELS: { id: string; title: string }[] = [
 const APP_VIEWS: { key: string; label: string; sections: string[] }[] = [
   { key: "learn", label: "How it Works", sections: ["how-it-works"] },
   { key: "visualizer", label: "Watch It Work", sections: ["visualizer"] },
-  { key: "keys", label: "Generate Keys", sections: ["generate", "key-list", "receiver-setup"] },
+  { key: "keys", label: "Generate DeckBook", sections: ["generate", "key-list", "receiver-setup"] },
   { key: "encrypt", label: "Encrypt", sections: ["encrypt-panel"] },
   { key: "decrypt", label: "Decrypt", sections: ["decrypt-panel"] },
   { key: "simulator", label: "Two-Party Simulator", sections: ["simulator"] },
@@ -2249,14 +2249,14 @@ function bindEvents(): void {
       // Tapping the already-selected deck unselects it; tapping a different
       // deck replaces the selection. Stay on the key list — the "Next:
       // Encrypt" link below the grid takes you to the next step.
+      // No toast here — the sticky selection box (and the card's own state)
+      // already show what's selected, so a popup would be redundant.
       if (state.selectedEncryptCode === code) {
         state.selectedEncryptCode = "";
         state.selectedEncryptCodes = [];
-        flash(`${code} unselected.`);
       } else {
         state.selectedEncryptCode = code;
         state.selectedEncryptCodes = [code];
-        flash(`${code} selected for encryption.`);
       }
       render();
     });
