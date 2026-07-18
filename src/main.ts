@@ -393,7 +393,7 @@ const state: AppState = {
   mistakeKey: "reuse",
   checklist: {},
   keyListPage: 1,
-  keyListPageSize: 24,
+  keyListPageSize: 8,
   hideUsedKeys: false,
   showEncryptSteps: false,
   showFingerprints: false,
@@ -1606,9 +1606,9 @@ function render(): void {
           <div class="pager-size">
             <label for="page-size">Keys per page</label>
             <select id="page-size" aria-label="Deck keys per page">
-              <option value="24" ${state.keyListPageSize === 24 ? "selected" : ""}>24</option>
-              <option value="60" ${state.keyListPageSize === 60 ? "selected" : ""}>60</option>
-              <option value="120" ${state.keyListPageSize === 120 ? "selected" : ""}>120</option>
+              <option value="4" ${state.keyListPageSize === 4 ? "selected" : ""}>4</option>
+              <option value="8" ${state.keyListPageSize === 8 ? "selected" : ""}>8</option>
+              <option value="16" ${state.keyListPageSize === 16 ? "selected" : ""}>16</option>
             </select>
           </div>`
               : ""
