@@ -1021,6 +1021,27 @@ button:disabled {
   margin-bottom: 0.4rem;
 }
 
+/* Prominent "mark used" action in the encrypt output, plus its confirmed state. */
+.mark-used-cta {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #3a2e17;
+}
+
+.mark-used-cta .mini-warning {
+  margin: 0 0 0.5rem;
+}
+
+.marked-used-confirm {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ok);
+  border-radius: 8px;
+  background: #14170f;
+  color: #bff0cb;
+  font-weight: 700;
+}
+
 #encrypt-keys-multi {
   min-height: 9.5rem;
 }

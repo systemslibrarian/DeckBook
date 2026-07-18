@@ -1789,7 +1789,20 @@ function render(): void {
                     </div>
                   </div>
                 </div>
-                <p class="mini-warning">Mark used now: ${escapeHtml(state.encryptOutput.indexCodes.join(", "))}</p>
+                ${
+                  state.encryptOutput.indexCodes.every(
+                    (code) => state.deckBook.find((entry) => entry.indexCode === code)?.status === "USED"
+                  )
+                    ? `<p class="marked-used-confirm">✓ ${escapeHtml(
+                        state.encryptOutput.indexCodes.join(", ")
+                      )} marked as USED — this key can never be reused.</p>`
+                    : `<div class="mark-used-cta">
+                        <p class="mini-warning">Once you've sent it, mark the key used so it can never be reused:</p>
+                        <button type="button" id="mark-output-used" class="cta-button">Mark ${escapeHtml(
+                          state.encryptOutput.indexCodes.join(", ")
+                        )} as USED</button>
+                      </div>`
+                }
               </div>`
             : ""
         }
@@ -2517,8 +2530,7 @@ function bindEvents(): void {
     document.querySelector(".output")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
-  const markEncryptUsed = document.querySelector<HTMLButtonElement>("#mark-encrypt-used");
-  markEncryptUsed?.addEventListener("click", () => {
+  const markOutputKeysUsed = (): void => {
     if (!state.encryptOutput) {
       return;
     }
@@ -2529,7 +2541,11 @@ function bindEvents(): void {
     state.selectedEncryptCodes = state.selectedEncryptCode ? [state.selectedEncryptCode] : [];
     flash(`Marked USED: ${state.encryptOutput.indexCodes.join(", ")}.`);
     render();
-  });
+  };
+  // Two entry points to the same action: the button under the plaintext box
+  // and the prominent one in the output next to the QR / share link.
+  document.querySelector<HTMLButtonElement>("#mark-encrypt-used")?.addEventListener("click", markOutputKeysUsed);
+  document.querySelector<HTMLButtonElement>("#mark-output-used")?.addEventListener("click", markOutputKeysUsed);
 
   const decryptIndex = document.querySelector<HTMLInputElement>("#decrypt-index");
   decryptIndex?.addEventListener("input", (event) => {
