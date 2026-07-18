@@ -216,8 +216,11 @@ body.native-app .app-nav-menu {
 }
 
 body.native-app .app-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   min-height: 46px;
-  padding: 0.8rem 0.9rem;
+  padding: 0.6rem 0.8rem;
   text-align: left;
   border: 0;
   border-radius: 8px;
@@ -232,11 +235,55 @@ body.native-app .app-nav-item:active {
   background: var(--bg-alt);
 }
 
+/* Numbered badge that makes the intended order obvious at a glance. */
+body.native-app .app-nav-step {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--bg-alt);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+body.native-app .app-nav-step--ref {
+  font-size: 1rem;
+}
+
+body.native-app .app-nav-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+body.native-app .app-nav-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* Mark the destination currently on screen. */
 body.native-app .app-nav-item.is-active {
   background: var(--bg-alt);
   color: var(--accent);
   font-weight: 700;
+}
+
+body.native-app .app-nav-item.is-active .app-nav-step {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+body.native-app .app-nav-item.is-active .app-nav-kicker {
+  color: var(--accent);
 }
 
 /* Lift toasts (e.g. the "press back again to exit" hint) above the gesture

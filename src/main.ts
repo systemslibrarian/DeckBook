@@ -221,10 +221,20 @@ const DEFAULT_VIEW = "learn";
 
 function renderAppNav(): string {
   const open = state.navMenuOpen;
-  const items = APP_VIEWS.map(
-    (v) =>
-      `<button type="button" class="app-nav-item${v.key === state.activeView ? " is-active" : ""}" data-view="${v.key}">${v.label}</button>`
-  ).join("");
+  // Number the sequential learning path so the intended order is obvious.
+  // "Reference & Glossary" is supplementary, not a step, so it stays un-numbered.
+  let step = 0;
+  const items = APP_VIEWS.map((v) => {
+    const isStep = v.key !== "reference";
+    if (isStep) step += 1;
+    const badge = isStep
+      ? `<span class="app-nav-step" aria-hidden="true">${step}</span>`
+      : `<span class="app-nav-step app-nav-step--ref" aria-hidden="true">★</span>`;
+    const label = isStep
+      ? `<span class="app-nav-kicker">Step ${step}</span><span class="app-nav-label">${v.label}</span>`
+      : `<span class="app-nav-kicker">Reference</span><span class="app-nav-label">${v.label}</span>`;
+    return `<button type="button" class="app-nav-item${v.key === state.activeView ? " is-active" : ""}" data-view="${v.key}">${badge}<span class="app-nav-text">${label}</span></button>`;
+  }).join("");
   return `
     <div class="app-nav">
       <button type="button" class="app-nav-toggle" aria-expanded="${open}" aria-controls="app-nav-menu" aria-label="${open ? "Close section menu" : "Open section menu"}">
