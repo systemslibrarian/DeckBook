@@ -1826,7 +1826,7 @@ function render(): void {
         </div>
         ${
           state.decryptOutput
-            ? `<div class="output">
+            ? `<div class="output" id="decrypt-output">
                 <p><strong>Plaintext:</strong> ${escapeHtml(state.decryptOutput.plaintext)}</p>
                 ${state.decryptOutput.warning ? `<p class="mini-warning">${escapeHtml(state.decryptOutput.warning)}</p>` : ""}
               </div>`
@@ -2605,8 +2605,9 @@ function bindEvents(): void {
         ? "One or more keys are already marked USED. Decryption is shown for demonstration, but these keys must not be reused for new messages."
         : null
     };
-    flash("Message decrypted.");
+    // No success toast — the decrypted plaintext appears below; scroll to it.
     render();
+    document.querySelector("#decrypt-output")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   const mistakeSelect = document.querySelector<HTMLSelectElement>("#mistake-choice");
