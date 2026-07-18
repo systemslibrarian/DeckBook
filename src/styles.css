@@ -688,6 +688,14 @@ button:disabled {
   border-color: #8f5757;
 }
 
+/* Selected-for-encryption gets a strong, obvious green treatment so it's as
+   unmistakable as the USED stamp. */
+.key-card.selected {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 1px var(--ok), 0 0 18px rgb(126 207 146 / 25%);
+  background: #14170f;
+}
+
 .used-stamp {
   position: absolute;
   right: 0.8rem;
@@ -698,6 +706,26 @@ button:disabled {
   padding: 0.15rem 0.45rem;
   border-radius: 6px;
   transform: rotate(-4deg);
+}
+
+.selected-stamp {
+  display: inline-block;
+  margin: 0.1rem 0 0.5rem;
+  border: 2px solid var(--ok);
+  color: #bff0cb;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  transform: rotate(-2deg);
+}
+
+/* The "Use for Encryption" button visibly latches once its key is selected. */
+.select-key-btn.is-selected {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #0d2413;
+  font-weight: 700;
 }
 
 .setup-labels {

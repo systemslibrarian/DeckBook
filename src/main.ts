@@ -1337,20 +1337,32 @@ function render(): void {
       : visibleKeys
           .map((entry) => {
             const isUsed = entry.status === "USED";
+            const isSelected = !isUsed && state.selectedEncryptCodes.includes(entry.indexCode);
             return `
-              <article class="key-card ${isUsed ? "used" : "unused"}" aria-label="Deck key ${escapeHtml(entry.indexCode)}">
+              <article class="key-card ${isUsed ? "used" : "unused"}${
+                isSelected ? " selected" : ""
+              }" aria-label="Deck key ${escapeHtml(entry.indexCode)}">
                 <header>
                   <h4>${escapeHtml(entry.indexCode)}</h4>
                   <span class="status-badge" aria-label="Status ${entry.status}">Status: ${entry.status}</span>
                 </header>
                 <p><strong>Fingerprint:</strong> ${escapeHtml(entry.fingerprint)}</p>
+                ${
+                  isSelected
+                    ? '<div class="selected-stamp" aria-label="Selected for encryption">✓ SELECTED FOR ENCRYPTION</div>'
+                    : ""
+                }
                 <div class="button-row">
                   <button type="button" data-action="view-key" data-code="${escapeHtml(entry.indexCode)}" aria-label="View deck order for ${escapeHtml(
                     entry.indexCode
                   )}">View Deck Order</button>
-                  <button type="button" data-action="select-key" data-code="${escapeHtml(entry.indexCode)}" ${
+                  <button type="button" class="select-key-btn${isSelected ? " is-selected" : ""}" data-action="select-key" data-code="${escapeHtml(entry.indexCode)}" ${
                     isUsed ? "disabled" : ""
-                  } aria-label="Use ${escapeHtml(entry.indexCode)} for encryption">Use for Encryption</button>
+                  } aria-pressed="${isSelected}" aria-label="${
+                    isSelected ? "Selected" : "Use"
+                  } ${escapeHtml(entry.indexCode)} for encryption">${
+                    isSelected ? "✓ Selected for Encryption" : "Use for Encryption"
+                  }</button>
                   <button type="button" data-action="mark-used" data-code="${escapeHtml(entry.indexCode)}" ${
                     isUsed ? "disabled" : ""
                   } aria-label="Mark ${escapeHtml(entry.indexCode)} as used">Mark Used</button>
